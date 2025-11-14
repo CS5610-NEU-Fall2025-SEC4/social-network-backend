@@ -4,8 +4,14 @@ import { Model } from 'mongoose';
 import { User, UserDocument } from './users.schema';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
-import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
+import { AppConfigService } from '../config/app-config.service';
+import {
+  CreateUserResponse,
+  LoginResponse,
+  JwtPayload,
+} from './types/user-response.types';
+import { BcryptUtil, JwtUtil } from '../utils';
 
 @Injectable()
 export class UsersService {
@@ -13,12 +19,10 @@ export class UsersService {
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
     private readonly jwtService: JwtService,
+    private readonly appConfigService: AppConfigService,
   ) {}
 
-  //for registering a user
-  async createUser(
-    createUserDto: CreateUserDto,
-  ): Promise<{ message: string; user: { username: string; email: string } }> {
+  async createUser(createUserDto: CreateUserDto): Promise<CreateUserResponse> {
     const { username, email, password } = createUserDto;
 
     const existing = await this.userModel.findOne({
@@ -29,45 +33,56 @@ export class UsersService {
       throw new BadRequestException('Username or email already exists');
     }
 
-    // ✅ Generate a salt for hashing
-    const saltRounds = 10; // 10 is a safe standard value
-    const salt = await bcrypt.genSalt(saltRounds);
+    const hashedPassword = await BcryptUtil.hashPassword(
+      password,
+      this.appConfigService.bcryptSaltRounds,
+    );
 
-    // ✅ Hash the password using bcrypt
-    const hashedPassword = await bcrypt.hash(password, salt);
+    try {
+      const newUser = await this.userModel.create({
+        ...createUserDto,
+        password: hashedPassword,
+      });
 
-    createUserDto.password = hashedPassword;
-    const newUser = await this.userModel.create(createUserDto);
-
-    return {
-      message: 'User created successfully',
-      user: {
-        username: newUser.username,
-        email: newUser.email,
-      },
-    };
+      return {
+        message: 'User created successfully',
+        user: {
+          username: newUser.username,
+          email: newUser.email,
+        },
+      };
+    } catch (error) {
+      if (error.code === 11000) {
+        throw new BadRequestException('Username or email already exists');
+      }
+      throw new BadRequestException(
+        'Unable to Process request at the moment. Contact support',
+      );
+    }
   }
 
-  //for logging in a user
-  async checkUser(loginUserDto: LoginUserDto): Promise<{
-    message: string;
-    access_token: string;
-  }> {
+  async loginUser(loginUserDto: LoginUserDto): Promise<LoginResponse> {
     const { username, password } = loginUserDto;
     const user = await this.userModel.findOne({ username: username });
 
     if (!user) {
       throw new BadRequestException('Invalid username or password');
     }
-    const isPasswordMatching = await bcrypt.compare(password, user.password);
+
+    const isPasswordMatching = await BcryptUtil.comparePassword(
+      password,
+      user.password,
+    );
 
     if (!isPasswordMatching) {
       throw new BadRequestException('Invalid username or password');
     }
 
-    //TO GENERATE TOKEN
-    const payload = { username: user.username, sub: user._id };
-    const access_token = this.jwtService.sign(payload);
+    const payload: JwtPayload = {
+      username: user.username,
+      sub: user._id.toString(),
+    };
+    const access_token = JwtUtil.generateToken(this.jwtService, payload);
 
     return { message: 'Login successful', access_token };
   }

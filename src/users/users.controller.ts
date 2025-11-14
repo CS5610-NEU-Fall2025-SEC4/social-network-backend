@@ -10,13 +10,15 @@ import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type {
+  CreateUserResponse,
+  LoginResponse,
+  AuthCheckResponse,
+  ValidatedUser,
+} from './types/user-response.types';
 
 interface AuthenticatedRequest extends Request {
-  user: {
-    userId: string;
-    username: string;
-    email: string;
-  };
+  user: ValidatedUser;
 }
 
 @Controller('users')
@@ -26,20 +28,18 @@ export class UsersController {
   @Post('register')
   async register(
     @Body() createUserDto: CreateUserDto,
-  ): Promise<{ message: string; user: { username: string; email: string } }> {
+  ): Promise<CreateUserResponse> {
     return this.usersService.createUser(createUserDto);
   }
 
   @Post('login')
-  async login(
-    @Body() loginUserDto: LoginUserDto,
-  ): Promise<{ message: string; access_token: string }> {
-    return this.usersService.checkUser(loginUserDto);
+  async login(@Body() loginUserDto: LoginUserDto): Promise<LoginResponse> {
+    return this.usersService.loginUser(loginUserDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('isAuthenticated')
-  checkAuth(@Request() req: AuthenticatedRequest) {
+  checkAuth(@Request() req: AuthenticatedRequest): AuthCheckResponse {
     return {
       authenticated: true,
       userId: req.user.userId,
