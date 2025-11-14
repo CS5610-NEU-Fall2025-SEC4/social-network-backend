@@ -1,17 +1,27 @@
-// app.module.ts
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-
-const mongoUri =
-  process.env.MONGODB_URI ?? 'mongodb://localhost:27017/social_network';
+import { UsersModule } from './users/users.module';
+import { AuthModule } from './auth/auth.module';
+import { AppConfigModule } from './config/app-config.module';
+import { AppConfigService } from './config/app-config.service';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    MongooseModule.forRoot(mongoUri),
+    AppConfigModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+    MongooseModule.forRootAsync({
+      inject: [AppConfigService],
+      useFactory: (appConfigService: AppConfigService) => ({
+        uri: appConfigService.databaseUrl,
+      }),
+    }),
+    UsersModule,
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

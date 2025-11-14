@@ -1,0 +1,49 @@
+import {
+  Body,
+  Controller,
+  Post,
+  UseGuards,
+  Get,
+  Request,
+} from '@nestjs/common';
+import { UsersService } from './users.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { LoginUserDto } from './dto/login-user.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type {
+  CreateUserResponse,
+  LoginResponse,
+  AuthCheckResponse,
+  ValidatedUser,
+} from './types/user-response.types';
+
+interface AuthenticatedRequest extends Request {
+  user: ValidatedUser;
+}
+
+@Controller('users')
+export class UsersController {
+  constructor(private readonly usersService: UsersService) {}
+
+  @Post('register')
+  async register(
+    @Body() createUserDto: CreateUserDto,
+  ): Promise<CreateUserResponse> {
+    return this.usersService.createUser(createUserDto);
+  }
+
+  @Post('login')
+  async login(@Body() loginUserDto: LoginUserDto): Promise<LoginResponse> {
+    return this.usersService.loginUser(loginUserDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('isAuthenticated')
+  checkAuth(@Request() req: AuthenticatedRequest): AuthCheckResponse {
+    return {
+      authenticated: true,
+      userId: req.user.userId,
+      username: req.user.username,
+    };
+  }
+}

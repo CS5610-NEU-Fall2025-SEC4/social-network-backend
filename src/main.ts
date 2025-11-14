@@ -2,25 +2,31 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import helmet from 'helmet';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
 
   app.use(helmet());
+
   app.enableCors({
-    origin: process.env.CORS_ORIGIN,
+    origin: configService.get<string>('CORS_ORIGIN'),
     credentials: true,
   });
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true, // strip unknown fields
-      forbidNonWhitelisted: true, // reject extra fields
-      transform: true, // auto-transform payloads to DTO types
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
     }),
   );
 
-  await app.listen(process.env.PORT || 8080);
-  console.log(`API on http://localhost:${process.env.PORT || 8080}`);
+  const port = configService.get<number>('PORT') || 8080;
+  await app.listen(port);
+
+  console.log(`✅ API running at http://localhost:${port}`);
+  console.log(`🌐 CORS Origin: ${configService.get<string>('CORS_ORIGIN')}`);
 }
 bootstrap();
