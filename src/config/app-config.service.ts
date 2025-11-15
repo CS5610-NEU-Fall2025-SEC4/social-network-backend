@@ -8,7 +8,8 @@ export class AppConfigService {
   }
 
   get jwtSecret(): string {
-    return this.configService.getOrThrow<string>('JWT_SECRET');
+    // Use access token secret from environment
+    return this.configService.getOrThrow<string>('JWT_ACCESS_SECRET');
   }
 
   get bcryptSaltRounds(): number {
@@ -17,13 +18,14 @@ export class AppConfigService {
   }
 
   get databaseUrl(): string {
-    return this.configService.getOrThrow<string>('DATABASE_URL');
+    // MongoDB connection string
+    return this.configService.getOrThrow<string>('MONGODB_URI');
   }
 
   private validateConfig(): void {
     const requiredConfigs = [
-      { key: 'JWT_SECRET', value: this.jwtSecret },
-      { key: 'DATABASE_URL', value: this.databaseUrl },
+      { key: 'JWT_ACCESS_SECRET', value: this.jwtSecret },
+      { key: 'MONGODB_URI', value: this.databaseUrl },
     ];
 
     const missing = requiredConfigs.filter((config) => !config.value);
