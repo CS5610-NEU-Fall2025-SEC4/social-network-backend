@@ -17,6 +17,30 @@ export class User {
 
   @Prop({ required: true })
   password: string;
+
+  // Optional profile fields
+  @Prop({ required: false })
+  bio?: string;
+
+  @Prop({ required: false })
+  location?: string;
+
+  @Prop({ required: false })
+  website?: string;
+
+  @Prop({ type: [String], required: false, default: [] })
+  interests?: string[];
+
+  @Prop({
+    type: {
+      twitter: { type: String, required: false },
+      github: { type: String, required: false },
+      linkedin: { type: String, required: false },
+    },
+    required: false,
+    _id: false,
+  })
+  social?: { twitter?: string; github?: string; linkedin?: string };
 }
 
 export type UserDocument = HydratedDocument<User>;

@@ -25,3 +25,18 @@ export interface ValidatedUser {
   username: string;
   email: string;
 }
+
+export interface ProfileResponse {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  bio?: string | null;
+  location?: string | null;
+  website?: string | null;
+  interests?: string[];
+  social?: { twitter?: string; github?: string; linkedin?: string };
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}

@@ -5,6 +5,7 @@ import {
   UseGuards,
   Get,
   Request,
+  Patch,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -16,6 +17,8 @@ import type {
   AuthCheckResponse,
   ValidatedUser,
 } from './types/user-response.types';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { ProfileResponse } from './types/user-response.types';
 
 interface AuthenticatedRequest extends Request {
   user: ValidatedUser;
@@ -45,5 +48,20 @@ export class UsersController {
       userId: req.user.userId,
       username: req.user.username,
     };
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  async getMe(@Request() req: AuthenticatedRequest): Promise<ProfileResponse> {
+    return this.usersService.getProfile(req.user.userId);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  async updateMe(
+    @Request() req: AuthenticatedRequest,
+    @Body() updates: UpdateUserDto,
+  ): Promise<ProfileResponse> {
+    return this.usersService.updateUserProfile(req.user.userId, updates);
   }
 }
