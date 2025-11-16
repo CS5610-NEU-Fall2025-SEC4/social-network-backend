@@ -17,8 +17,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json",
-    "strip:comments": "node scripts/remove-comments.cjs"
+    "test:e2e": "jest --config ./test/jest-e2e.json"
   },
   "dependencies": {
     "@nestjs/swagger": "^7.4.2",
@@ -68,7 +67,6 @@
     "jest": "^30.0.0",
     "prettier": "^3.4.2",
     "source-map-support": "^0.5.21",
-    "strip-comments": "^2.0.1",
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.2",

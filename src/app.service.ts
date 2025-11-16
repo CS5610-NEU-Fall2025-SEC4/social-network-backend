@@ -14,7 +14,7 @@ export class AppService {
   ) {}
 
   getHello(): string {
-    const port = this.config.get<number>('PORT') || 3001;
+    const port = this.appConfig.apiPort;
     const cors = this.config.get<string>('CORS_ORIGIN') || 'N/A';
     const algolia = this.appConfig.algoliaBaseUrl;
     const mongo = this.config.get<string>('MONGODB_URI');
@@ -188,7 +188,7 @@ export class AppService {
       uptime: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
       env: process.env.NODE_ENV || 'development',
-      port: this.config.get<number>('PORT') || 3001,
+      port: this.appConfig.apiPort,
       db: { status: dbStatus },
     };
   }

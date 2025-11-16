@@ -26,6 +26,15 @@ export class AppConfigService {
     );
   }
 
+  get apiPort(): number {
+    const portStr = this.configService.get<string>('PORT', '3001');
+    const port = parseInt(portStr, 10);
+    if (Number.isNaN(port) || port <= 0) {
+      throw new Error(' Invalid PORT value. It must be a positive integer.');
+    }
+    return port;
+  }
+
   private validateConfig(): void {
     const requiredConfigs = [
       { key: 'JWT_ACCESS_SECRET', value: this.jwtSecret },
