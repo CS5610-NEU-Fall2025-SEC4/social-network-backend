@@ -18,7 +18,6 @@ export class User {
   @Prop({ required: true })
   password: string;
 
-  // Optional profile fields
   @Prop({ required: false })
   bio?: string;
 

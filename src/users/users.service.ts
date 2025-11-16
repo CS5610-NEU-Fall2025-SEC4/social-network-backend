@@ -115,13 +115,19 @@ export class UsersService {
     userId: string,
     updates: UpdateUserDto,
   ): Promise<ProfileResponse> {
-    // If email is changing, ensure uniqueness
     if (updates.email) {
       const exists = await this.userModel.findOne({
         _id: { $ne: userId },
         email: updates.email,
       });
       if (exists) throw new BadRequestException('Email already in use');
+    }
+    if (updates.username) {
+      const uExists = await this.userModel.findOne({
+        _id: { $ne: userId },
+        username: updates.username,
+      });
+      if (uExists) throw new BadRequestException('Username already in use');
     }
 
     const { twitter, github, linkedin, ...rest } = updates;
