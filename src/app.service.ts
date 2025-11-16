@@ -1,8 +1,131 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AppConfigService } from './config/app-config.service';
 
 @Injectable()
 export class AppService {
+  constructor(
+    private readonly config: ConfigService,
+    private readonly appConfig: AppConfigService,
+  ) {}
+
+  private mask(value: string | undefined, visible: number = 6): string {
+    if (!value) return 'N/A';
+    if (value.length <= visible) return value;
+    return `${value.slice(0, visible)}…`;
+  }
+
   getHello(): string {
-    return 'Hello World!';
+    const port = this.config.get<number>('PORT') || 8080;
+    const cors = this.config.get<string>('CORS_ORIGIN') || 'N/A';
+    const algolia = this.appConfig.algoliaBaseUrl;
+    const mongo = this.config.get<string>('MONGODB_URI');
+    const env = process.env.NODE_ENV || 'development';
+    const startedAt = new Date().toISOString();
+    const uptime = Math.floor(process.uptime());
+
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Social Network API</title>
+  <style>
+    :root { --bg: #0f172a; --card: #111827; --fg: #e5e7eb; --muted: #9ca3af; --accent: #60a5fa; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji"; color: var(--fg); background: radial-gradient(1200px 600px at 10% 10%, rgba(96,165,250,.15), transparent 60%), radial-gradient(1000px 400px at 90% 20%, rgba(16,185,129,.12), transparent 60%), var(--bg); min-height:100dvh; display:grid; place-items:center; padding:24px; }
+    .card { width: min(960px, 95%); background: linear-gradient(180deg, rgba(17,24,39,.9), rgba(17,24,39,.8)); border: 1px solid rgba(255,255,255,.08); border-radius:16px; overflow:hidden; box-shadow: 0 10px 40px rgba(0,0,0,.35); backdrop-filter: blur(8px); }
+    .header { display:flex; align-items:center; gap:14px; padding:20px 24px; border-bottom:1px solid rgba(255,255,255,.08); background: linear-gradient(90deg, rgba(96,165,250,.12), transparent); }
+    .pulse { width:12px; height:12px; border-radius:999px; background: #34d399; box-shadow:0 0 0 rgba(52,211,153,.7); animation: pulse 2s infinite; }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(52,211,153,.7);} 70% { box-shadow: 0 0 0 12px rgba(52,211,153,0);} 100% { box-shadow: 0 0 0 0 rgba(52,211,153,0);} }
+    h1 { margin:0; font-size: 20px; letter-spacing:.3px; }
+    .sub { color: var(--muted); font-size: 13px; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; padding: 20px 24px; }
+    .section { border: 1px solid rgba(255,255,255,.08); border-radius:12px; padding:16px; background: rgba(255,255,255,.03); }
+    .section h2 { margin: 0 0 10px; font-size: 14px; color: var(--muted); font-weight: 600; letter-spacing:.3px; }
+    .kv { display:grid; grid-template-columns: 160px 1fr; gap:8px 12px; font-size: 14px; }
+    .kv div { padding:4px 0; }
+    .key { color: var(--muted); }
+    .val { color: var(--fg); word-break: break-all; }
+    .endpoints a { color: var(--accent); text-decoration: none; }
+    .endpoints a:hover { text-decoration: underline; }
+    .footer { padding: 18px 24px; border-top:1px solid rgba(255,255,255,.08); display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; background: rgba(96,165,250,.15); color: #bfdbfe; border:1px solid rgba(96,165,250,.35); border-radius:10px; text-decoration:none; transition:.2s ease; }
+    .btn:hover { transform: translateY(-1px); background: rgba(96,165,250,.25); }
+    .spinner { width:18px; height:18px; border-radius:999px; border:2px solid rgba(255,255,255,.2); border-top-color:#60a5fa; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } .kv { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="card" data-start="${startedAt}" data-uptime="${uptime}">
+    <div class="header">
+      <div class="pulse" aria-hidden="true"></div>
+      <div>
+        <h1>Social Network API • Running</h1>
+        <div class="sub">NestJS server is up and serving requests.</div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="section">
+        <h2>Runtime</h2>
+        <div class="kv mono">
+          <div class="key">Environment</div><div class="val">${env}</div>
+          <div class="key">Port</div><div class="val">${port}</div>
+          <div class="key">Started</div><div class="val">${startedAt}</div>
+          <div class="key">Uptime</div><div class="val" id="uptime">${uptime}s</div>
+          <div class="key">Node</div><div class="val">${process.version}</div>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Configuration</h2>
+        <div class="kv mono">
+          <div class="key">CORS Origin</div><div class="val">${cors}</div>
+          <div class="key">Algolia Base</div><div class="val">${algolia}</div>
+          <div class="key">Mongo URI</div><div class="val">${this.mask(mongo)}</div>
+        </div>
+      </div>
+      <div class="section endpoints" style="grid-column: 1 / -1;">
+        <h2>Endpoints</h2>
+        <div class="kv mono">
+          <div class="key">Search</div><div class="val"><a href="/search?tags=front_page&hitsPerPage=10" target="_blank">GET /search?tags=front_page&amp;hitsPerPage=10</a></div>
+          <div class="key">Front Page</div><div class="val"><a href="/front-page" target="_blank">GET /front-page</a></div>
+          <div class="key">Tag</div><div class="val"><a href="/tag/show_hn" target="_blank">GET /tag/show_hn</a></div>
+          <div class="key">Item</div><div class="val"><a href="/items/32174292" target="_blank">GET /items/:id</a></div>
+          <div class="key">Users</div><div class="val">POST /users/register • POST /users/login • GET /users/me</div>
+        </div>
+      </div>
+    </div>
+    <div class="footer">
+      <a class="btn" href="http://localhost:3000" target="_blank" rel="noopener">Open Frontend (Next.js)</a>
+      <div class="sub">To view the UI, run the frontend and open http://localhost:3000</div>
+      <div class="spinner" aria-label="running"></div>
+    </div>
+  </div>
+  <script>
+    (function(){
+      const root = document.querySelector('.card');
+      if(!root) return;
+      const startUptime = Number(root.getAttribute('data-uptime')||'0');
+      const mountedAt = Date.now()/1000;
+      const el = document.getElementById('uptime');
+      function fmt(sec){
+        const s = Math.floor(sec%60).toString().padStart(2,'0');
+        const m = Math.floor((sec/60)%60).toString().padStart(2,'0');
+        const h = Math.floor(sec/3600).toString().padStart(2,'0');
+        return h+":"+m+":"+s;
+      }
+      function tick(){
+        const now = Date.now()/1000;
+        const total = Math.floor(startUptime + (now - mountedAt));
+        if(el) el.textContent = fmt(total);
+      }
+      tick();
+      setInterval(tick, 1000);
+    })();
+  </script>
+</body>
+</html>`;
   }
 }
