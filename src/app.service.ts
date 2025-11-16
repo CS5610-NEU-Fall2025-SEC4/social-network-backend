@@ -38,6 +38,12 @@ export class AppService {
         initialDb = 'unknown';
     }
 
+    const mem = process.memoryUsage();
+    const cpu = process.cpuUsage();
+    const fmtMB = (b: number) => (b / 1048576).toFixed(1) + ' MB';
+    const userMs = Math.round(cpu.user / 1000);
+    const systemMs = Math.round(cpu.system / 1000);
+
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -107,6 +113,24 @@ export class AppService {
         <div class="kv mono">
           <div class="key">Status</div><div class="val" id="health-status">ok</div>
           <div class="key">DB</div><div class="val" id="db-status">${initialDb}</div>
+          <div class="key">PID</div><div class="val" id="pid">${process.pid}</div>
+          <div class="key">RSS</div><div class="val" id="mem-rss">${fmtMB(mem.rss)}</div>
+          <div class="key">Heap Used</div><div class="val" id="mem-heap-used">${fmtMB(mem.heapUsed)}</div>
+          <div class="key">Heap Total</div><div class="val" id="mem-heap-total">${fmtMB(mem.heapTotal)}</div>
+          <div class="key">CPU User</div><div class="val" id="cpu-user">${userMs} ms</div>
+          <div class="key">CPU System</div><div class="val" id="cpu-system">${systemMs} ms</div>
+        </div>
+      </div>
+      <div class="section">
+        <h2>Architecture</h2>
+        <div class="kv mono">
+          <div class="key">Framework</div><div class="val">NestJS (Controllers · Services)</div>
+          <div class="key">Modules</div><div class="val">auth · users · search</div>
+          <div class="key">Persistence</div><div class="val">MongoDB via Mongoose</div>
+          <div class="key">Auth</div><div class="val">JWT (passport strategy + guard)</div>
+          <div class="key">Config</div><div class="val">@nestjs/config + AppConfigService</div>
+          <div class="key">Flow</div><div class="val">HTTP → Controller → Service → Mongoose Model → Response</div>
+          <div class="key">Contracts</div><div class="val">DTOs + typed responses</div>
         </div>
       </div>
       <div class="section endpoints" style="grid-column: 1 / -1;">
@@ -156,6 +180,20 @@ export class AppService {
           const db = document.getElementById('db-status');
           if(hs) hs.textContent = data.status || 'unknown';
           if(db) db.textContent = (data.db && data.db.status) ? data.db.status : 'unknown';
+          const pid = document.getElementById('pid');
+          const mr = document.getElementById('mem-rss');
+          const mhu = document.getElementById('mem-heap-used');
+          const mht = document.getElementById('mem-heap-total');
+          const cu = document.getElementById('cpu-user');
+          const cs = document.getElementById('cpu-system');
+          function fmtMB(b){ if(typeof b!== 'number') return '—'; return (b/1048576).toFixed(1)+' MB'; }
+          function fmtMS(ms){ if(typeof ms!== 'number') return '—'; return ms.toFixed(0)+' ms'; }
+          if(pid) pid.textContent = (data.pid!=null? String(data.pid): '—');
+          if(mr) mr.textContent = data.memory ? fmtMB(data.memory.rss) : '—';
+          if(mhu) mhu.textContent = data.memory ? fmtMB(data.memory.heapUsed) : '—';
+          if(mht) mht.textContent = data.memory ? fmtMB(data.memory.heapTotal) : '—';
+          if(cu) cu.textContent = data.cpu ? fmtMS(data.cpu.userMs) : '—';
+          if(cs) cs.textContent = data.cpu ? fmtMS(data.cpu.systemMs) : '—';
         }catch(_){ /* ignore */ }
       }
       refreshHealth();
@@ -183,6 +221,8 @@ export class AppService {
       default:
         dbStatus = 'unknown';
     }
+    const mem = process.memoryUsage();
+    const cpu = process.cpuUsage();
     return {
       status: 'ok',
       uptime: Math.floor(process.uptime()),
@@ -190,6 +230,18 @@ export class AppService {
       env: process.env.NODE_ENV || 'development',
       port: this.appConfig.apiPort,
       db: { status: dbStatus },
+      pid: process.pid,
+      memory: {
+        rss: mem.rss,
+        heapTotal: mem.heapTotal,
+        heapUsed: mem.heapUsed,
+        external: mem.external,
+        arrayBuffers: mem.arrayBuffers,
+      },
+      cpu: {
+        userMs: Math.round(cpu.user / 1000),
+        systemMs: Math.round(cpu.system / 1000),
+      },
     };
   }
 }
