@@ -23,10 +23,10 @@ async function bootstrap() {
     }),
   );
 
-  const port = configService.get<number>('PORT') || 8080;
+  const port = configService.get<number>('PORT') || 3001;
   await app.listen(port);
 
   console.log(`✅ API running at http://localhost:${port}`);
   console.log(`🌐 CORS Origin: ${configService.get<string>('CORS_ORIGIN')}`);
 }
-bootstrap();
+void bootstrap();

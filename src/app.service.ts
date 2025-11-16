@@ -14,7 +14,7 @@ export class AppService {
   ) {}
 
   getHello(): string {
-    const port = this.config.get<number>('PORT') || 8080;
+    const port = this.config.get<number>('PORT') || 3001;
     const cors = this.config.get<string>('CORS_ORIGIN') || 'N/A';
     const algolia = this.appConfig.algoliaBaseUrl;
     const mongo = this.config.get<string>('MONGODB_URI');
@@ -22,6 +22,21 @@ export class AppService {
     const env = process.env.NODE_ENV || 'development';
     const startedAt = new Date().toISOString();
     const uptime = Math.floor(process.uptime());
+    const s = this.connection?.readyState;
+    let initialDb = 'unknown';
+    switch (s) {
+      case ConnectionStates.connected:
+        initialDb = 'connected';
+        break;
+      case ConnectionStates.connecting:
+        initialDb = 'connecting';
+        break;
+      case ConnectionStates.disconnected:
+        initialDb = 'disconnected';
+        break;
+      default:
+        initialDb = 'unknown';
+    }
 
     return `<!doctype html>
 <html lang="en">
@@ -87,6 +102,13 @@ export class AppService {
           <div class="key">Mongo URI</div><div class="val mono">${mongoFull}</div>
         </div>
       </div>
+      <div class="section">
+        <h2>Health</h2>
+        <div class="kv mono">
+          <div class="key">Status</div><div class="val" id="health-status">ok</div>
+          <div class="key">DB</div><div class="val" id="db-status">${initialDb}</div>
+        </div>
+      </div>
       <div class="section endpoints" style="grid-column: 1 / -1;">
         <h2>Endpoints</h2>
         <div class="kv mono">
@@ -125,6 +147,20 @@ export class AppService {
       tick();
       setInterval(tick, 1000);
 
+      async function refreshHealth(){
+        try{
+          const res = await fetch('/health');
+          if(!res.ok) return;
+          const data = await res.json();
+          const hs = document.getElementById('health-status');
+          const db = document.getElementById('db-status');
+          if(hs) hs.textContent = data.status || 'unknown';
+          if(db) db.textContent = (data.db && data.db.status) ? data.db.status : 'unknown';
+        }catch(_){ /* ignore */ }
+      }
+      refreshHealth();
+      setInterval(refreshHealth, 5000);
+
     })();
   </script>
 </body>
@@ -152,7 +188,7 @@ export class AppService {
       uptime: Math.floor(process.uptime()),
       timestamp: new Date().toISOString(),
       env: process.env.NODE_ENV || 'development',
-      port: this.config.get<number>('PORT') || 8080,
+      port: this.config.get<number>('PORT') || 3001,
       db: { status: dbStatus },
     };
   }
