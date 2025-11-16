@@ -1,25 +1,24 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AppConfigService } from './config/app-config.service';
+import { InjectConnection } from '@nestjs/mongoose';
+import type { Connection } from 'mongoose';
+import { ConnectionStates } from 'mongoose';
 
 @Injectable()
 export class AppService {
   constructor(
     private readonly config: ConfigService,
     private readonly appConfig: AppConfigService,
+    @InjectConnection() private readonly connection: Connection,
   ) {}
-
-  private mask(value: string | undefined, visible: number = 6): string {
-    if (!value) return 'N/A';
-    if (value.length <= visible) return value;
-    return `${value.slice(0, visible)}…`;
-  }
 
   getHello(): string {
     const port = this.config.get<number>('PORT') || 8080;
     const cors = this.config.get<string>('CORS_ORIGIN') || 'N/A';
     const algolia = this.appConfig.algoliaBaseUrl;
     const mongo = this.config.get<string>('MONGODB_URI');
+    const mongoFull = mongo || 'N/A';
     const env = process.env.NODE_ENV || 'development';
     const startedAt = new Date().toISOString();
     const uptime = Math.floor(process.uptime());
@@ -46,8 +45,10 @@ export class AppService {
     .kv { display:grid; grid-template-columns: 160px 1fr; gap:8px 12px; font-size: 14px; }
     .kv div { padding:4px 0; }
     .key { color: var(--muted); }
-    .val { color: var(--fg); word-break: break-all; }
-    .endpoints a { color: var(--accent); text-decoration: none; }
+    .val { color: var(--fg); white-space: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+    .val::-webkit-scrollbar { height: 6px; }
+    .val::-webkit-scrollbar-thumb { background: rgba(255,255,255,.15); border-radius: 8px; }
+    .endpoints a { color: var(--accent); text-decoration: none; white-space: nowrap; }
     .endpoints a:hover { text-decoration: underline; }
     .footer { padding: 18px 24px; border-top:1px solid rgba(255,255,255,.08); display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; background: rgba(96,165,250,.15); color: #bfdbfe; border:1px solid rgba(96,165,250,.35); border-radius:10px; text-decoration:none; transition:.2s ease; }
@@ -83,7 +84,7 @@ export class AppService {
         <div class="kv mono">
           <div class="key">CORS Origin</div><div class="val">${cors}</div>
           <div class="key">Algolia Base</div><div class="val">${algolia}</div>
-          <div class="key">Mongo URI</div><div class="val">${this.mask(mongo)}</div>
+          <div class="key">Mongo URI</div><div class="val mono">${mongoFull}</div>
         </div>
       </div>
       <div class="section endpoints" style="grid-column: 1 / -1;">
@@ -123,9 +124,36 @@ export class AppService {
       }
       tick();
       setInterval(tick, 1000);
+
     })();
   </script>
 </body>
 </html>`;
+  }
+
+  getHealth() {
+    const state = this.connection?.readyState;
+    let dbStatus = 'unknown';
+    switch (state) {
+      case ConnectionStates.connected:
+        dbStatus = 'connected';
+        break;
+      case ConnectionStates.connecting:
+        dbStatus = 'connecting';
+        break;
+      case ConnectionStates.disconnected:
+        dbStatus = 'disconnected';
+        break;
+      default:
+        dbStatus = 'unknown';
+    }
+    return {
+      status: 'ok',
+      uptime: Math.floor(process.uptime()),
+      timestamp: new Date().toISOString(),
+      env: process.env.NODE_ENV || 'development',
+      port: this.config.get<number>('PORT') || 8080,
+      db: { status: dbStatus },
+    };
   }
 }
