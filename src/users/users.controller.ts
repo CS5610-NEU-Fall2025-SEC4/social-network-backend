@@ -6,6 +6,7 @@ import {
   Get,
   Request,
   Patch,
+  Param,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -18,7 +19,10 @@ import type {
   ValidatedUser,
 } from './types/user-response.types';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { ProfileResponse } from './types/user-response.types';
+import {
+  ProfileResponse,
+  PublicProfileResponse,
+} from './types/user-response.types';
 
 interface AuthenticatedRequest extends Request {
   user: ValidatedUser;
@@ -63,5 +67,10 @@ export class UsersController {
     @Body() updates: UpdateUserDto,
   ): Promise<ProfileResponse> {
     return this.usersService.updateUserProfile(req.user.userId, updates);
+  }
+
+  @Get(':id')
+  async getPublicById(@Param('id') id: string): Promise<PublicProfileResponse> {
+    return this.usersService.getPublicProfile(id);
   }
 }

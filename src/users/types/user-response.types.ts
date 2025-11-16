@@ -39,4 +39,25 @@ export interface ProfileResponse {
   social?: { twitter?: string; github?: string; linkedin?: string };
   createdAt?: Date | string;
   updatedAt?: Date | string;
+  followers?: UserRef[];
+  following?: UserRef[];
+}
+
+export interface UserRef {
+  id: string;
+  username: string;
+}
+
+export interface PublicProfileResponse {
+  id: string;
+  username: string;
+  firstName: string;
+  lastName: string;
+  bio?: string | null;
+  location?: string | null;
+  website?: string | null;
+  interests?: string[];
+  social?: { twitter?: string; github?: string; linkedin?: string };
+  followers?: UserRef[];
+  following?: UserRef[];
 }

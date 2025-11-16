@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { HydratedDocument } from 'mongoose';
+import { HydratedDocument, Types } from 'mongoose';
 
 @Schema({ timestamps: true })
 export class User {
@@ -40,6 +40,20 @@ export class User {
     _id: false,
   })
   social?: { twitter?: string; github?: string; linkedin?: string };
+
+  @Prop({
+    type: [{ type: Types.ObjectId, ref: 'User' }],
+    required: false,
+    default: [],
+  })
+  followers?: Types.ObjectId[];
+
+  @Prop({
+    type: [{ type: Types.ObjectId, ref: 'User' }],
+    required: false,
+    default: [],
+  })
+  following?: Types.ObjectId[];
 }
 
 export type UserDocument = HydratedDocument<User>;

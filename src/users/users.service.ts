@@ -17,7 +17,11 @@ import {
   JwtPayload,
 } from './types/user-response.types';
 import { BcryptUtil, JwtUtil } from '../utils';
-import { ProfileResponse } from './types/user-response.types';
+import {
+  ProfileResponse,
+  PublicProfileResponse,
+  UserRef,
+} from './types/user-response.types';
 
 @Injectable()
 export class UsersService {
@@ -95,8 +99,27 @@ export class UsersService {
   }
 
   async getProfile(userId: string): Promise<ProfileResponse> {
-    const user = await this.userModel.findById(userId).exec();
+    const user = await this.userModel
+      .findById(userId)
+      .populate('followers', 'username')
+      .populate('following', 'username')
+      .exec();
     if (!user) throw new NotFoundException('User not found');
+    type FF = {
+      followers?: Array<{ _id: unknown; username: string }>;
+      following?: Array<{ _id: unknown; username: string }>;
+    };
+    const rels = user as unknown as FF;
+    const followersDocs = rels.followers ?? [];
+    const followingDocs = rels.following ?? [];
+    const followers: UserRef[] = followersDocs.map((u) => ({
+      id: String(u._id),
+      username: u.username,
+    }));
+    const following: UserRef[] = followingDocs.map((u) => ({
+      id: String(u._id),
+      username: u.username,
+    }));
     return {
       id: String(user._id),
       username: user.username,
@@ -108,6 +131,8 @@ export class UsersService {
       website: user.website ?? null,
       interests: user.interests ?? [],
       social: user.social ?? {},
+      followers,
+      following,
     };
   }
 
@@ -143,8 +168,25 @@ export class UsersService {
 
     const user = await this.userModel
       .findByIdAndUpdate(userId, updateDoc, { new: true })
+      .populate('followers', 'username')
+      .populate('following', 'username')
       .exec();
     if (!user) throw new NotFoundException('User not found');
+    type FF2 = {
+      followers?: Array<{ _id: unknown; username: string }>;
+      following?: Array<{ _id: unknown; username: string }>;
+    };
+    const rels2 = user as unknown as FF2;
+    const followersDocs = rels2.followers ?? [];
+    const followingDocs = rels2.following ?? [];
+    const followers: UserRef[] = followersDocs.map((u) => ({
+      id: String(u._id),
+      username: u.username,
+    }));
+    const following: UserRef[] = followingDocs.map((u) => ({
+      id: String(u._id),
+      username: u.username,
+    }));
     return {
       id: String(user._id),
       username: user.username,
@@ -156,6 +198,45 @@ export class UsersService {
       website: user.website ?? null,
       interests: user.interests ?? [],
       social: user.social ?? {},
+      followers,
+      following,
+    };
+  }
+
+  async getPublicProfile(userId: string): Promise<PublicProfileResponse> {
+    const user = await this.userModel
+      .findById(userId)
+      .populate('followers', 'username')
+      .populate('following', 'username')
+      .exec();
+    if (!user) throw new NotFoundException('User not found');
+    type FF3 = {
+      followers?: Array<{ _id: unknown; username: string }>;
+      following?: Array<{ _id: unknown; username: string }>;
+    };
+    const rels3 = user as unknown as FF3;
+    const followersDocs = rels3.followers ?? [];
+    const followingDocs = rels3.following ?? [];
+    const followers: UserRef[] = followersDocs.map((u) => ({
+      id: String(u._id),
+      username: u.username,
+    }));
+    const following: UserRef[] = followingDocs.map((u) => ({
+      id: String(u._id),
+      username: u.username,
+    }));
+    return {
+      id: String(user._id),
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      bio: user.bio ?? null,
+      location: user.location ?? null,
+      website: user.website ?? null,
+      interests: user.interests ?? [],
+      social: user.social ?? {},
+      followers,
+      following,
     };
   }
 }
