@@ -35,6 +35,7 @@ export interface SearchParams {
   query?: string;
   tags?: string;
   page?: string;
+  sort?: string;
   hitsPerPage?: string;
   numericFilters?: string;
 }

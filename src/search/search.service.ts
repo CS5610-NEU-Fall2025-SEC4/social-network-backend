@@ -4,7 +4,7 @@ import { HNSearchResponse, HNStory, SearchParams } from './search.types';
 
 @Injectable()
 export class SearchService {
-  constructor(private readonly config: AppConfigService) {}
+  constructor(private readonly config: AppConfigService) { }
 
   private buildQueryString(params: SearchParams): string {
     const searchParams = new URLSearchParams();
@@ -37,7 +37,11 @@ export class SearchService {
       numericFilters: params.numericFilters ?? '',
     };
     const qs = this.buildQueryString(processed);
-    return this.fetchAPI(`/search?${qs}`);
+    console.log(
+      `/${params.sort !== undefined && params.sort !== null && params.sort !== '' ? params.sort : 'search'}?${qs}`,
+    );
+    return this.fetchAPI(`/${params.sort !== undefined && params.sort !== null && params.sort !== '' ? params.sort : 'search'}?${qs}`,
+    );
   }
 
   async getItem(id: number): Promise<HNStory> {
