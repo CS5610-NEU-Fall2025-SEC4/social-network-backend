@@ -76,7 +76,6 @@ export class User {
     social?: boolean;
   };
 
-  // Timestamp fields added by Mongoose when using { timestamps: true }
   createdAt?: Date;
   updatedAt?: Date;
 }

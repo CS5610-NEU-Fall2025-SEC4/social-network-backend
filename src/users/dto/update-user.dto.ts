@@ -97,7 +97,6 @@ export class UpdateUserDto {
   @MaxLength(200)
   linkedin?: string;
 
-  // Visibility flags (optional). Nested validation for per-field public/private.
   @IsOptional()
   @ValidateNested()
   @Type(() => VisibilityDto)

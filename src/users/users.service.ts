@@ -143,7 +143,6 @@ export class UsersService {
     userId: string,
     updates: UpdateUserDto,
   ): Promise<ProfileResponse> {
-    // Fetch current user first to allow merging nested structures (visibility, social)
     const current = await this.userModel.findById(userId).exec();
     if (!current) throw new NotFoundException('User not found');
 
@@ -182,7 +181,6 @@ export class UsersService {
       };
     } = { ...rest };
 
-    // Merge social links (only override provided ones, keep existing others)
     if (twitter || github || linkedin) {
       const mergedSocial: {
         twitter?: string;
@@ -197,7 +195,6 @@ export class UsersService {
       updateDoc.social = mergedSocial;
     }
 
-    // Merge visibility flags with existing (only sensitive fields were implemented)
     if (visibilityUpdates) {
       const mergedVis: {
         name?: boolean;
@@ -280,7 +277,6 @@ export class UsersService {
     return {
       id: String(user._id),
       username: user.username,
-      // Names always public (treat as non-sensitive for display)
       firstName: user.firstName,
       lastName: user.lastName,
       bio: user.visibility?.bio === false ? null : (user.bio ?? null),
