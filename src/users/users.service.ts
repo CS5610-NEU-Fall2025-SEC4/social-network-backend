@@ -133,6 +133,9 @@ export class UsersService {
       social: user.social ?? {},
       followers,
       following,
+      createdAt: user.createdAt as Date,
+      updatedAt: user.updatedAt as Date,
+      visibility: user.visibility ?? {},
     };
   }
 
@@ -140,6 +143,10 @@ export class UsersService {
     userId: string,
     updates: UpdateUserDto,
   ): Promise<ProfileResponse> {
+    // Fetch current user first to allow merging nested structures (visibility, social)
+    const current = await this.userModel.findById(userId).exec();
+    if (!current) throw new NotFoundException('User not found');
+
     if (updates.email) {
       const exists = await this.userModel.findOne({
         _id: { $ne: userId },
@@ -155,16 +162,58 @@ export class UsersService {
       if (uExists) throw new BadRequestException('Username already in use');
     }
 
-    const { twitter, github, linkedin, ...rest } = updates;
+    const {
+      twitter,
+      github,
+      linkedin,
+      visibility: visibilityUpdates,
+      ...rest
+    } = updates;
     const updateDoc: Partial<User> & {
       interests?: string[];
       social?: { twitter?: string; github?: string; linkedin?: string };
+      visibility?: {
+        name?: boolean;
+        bio?: boolean;
+        location?: boolean;
+        website?: boolean;
+        interests?: boolean;
+        social?: boolean;
+      };
     } = { ...rest };
-    const social: { twitter?: string; github?: string; linkedin?: string } = {};
-    if (typeof twitter === 'string') social.twitter = twitter;
-    if (typeof github === 'string') social.github = github;
-    if (typeof linkedin === 'string') social.linkedin = linkedin;
-    if (Object.keys(social).length > 0) updateDoc.social = social;
+
+    // Merge social links (only override provided ones, keep existing others)
+    if (twitter || github || linkedin) {
+      const mergedSocial: {
+        twitter?: string;
+        github?: string;
+        linkedin?: string;
+      } = {
+        ...(current.social ?? {}),
+      };
+      if (typeof twitter === 'string') mergedSocial.twitter = twitter;
+      if (typeof github === 'string') mergedSocial.github = github;
+      if (typeof linkedin === 'string') mergedSocial.linkedin = linkedin;
+      updateDoc.social = mergedSocial;
+    }
+
+    // Merge visibility flags with existing (only sensitive fields were implemented)
+    if (visibilityUpdates) {
+      const mergedVis: {
+        name?: boolean;
+        bio?: boolean;
+        location?: boolean;
+        website?: boolean;
+        interests?: boolean;
+        social?: boolean;
+      } = { ...(current.visibility ?? {}) };
+      for (const [key, value] of Object.entries(visibilityUpdates)) {
+        if (typeof value === 'boolean') {
+          mergedVis[key as keyof typeof mergedVis] = value;
+        }
+      }
+      updateDoc.visibility = mergedVis;
+    }
 
     const user = await this.userModel
       .findByIdAndUpdate(userId, updateDoc, { new: true })
@@ -200,6 +249,9 @@ export class UsersService {
       social: user.social ?? {},
       followers,
       following,
+      createdAt: user.createdAt as Date,
+      updatedAt: user.updatedAt as Date,
+      visibility: user.visibility ?? {},
     };
   }
 
@@ -228,15 +280,23 @@ export class UsersService {
     return {
       id: String(user._id),
       username: user.username,
+      // Names always public (treat as non-sensitive for display)
       firstName: user.firstName,
       lastName: user.lastName,
-      bio: user.bio ?? null,
-      location: user.location ?? null,
-      website: user.website ?? null,
-      interests: user.interests ?? [],
-      social: user.social ?? {},
+      bio: user.visibility?.bio === false ? null : (user.bio ?? null),
+      location:
+        user.visibility?.location === false ? null : (user.location ?? null),
+      website:
+        user.visibility?.website === false ? null : (user.website ?? null),
+      interests:
+        user.visibility?.interests === false
+          ? undefined
+          : (user.interests ?? []),
+      social:
+        user.visibility?.social === false ? undefined : (user.social ?? {}),
       followers,
       following,
+      createdAt: user.createdAt as Date,
     };
   }
 }

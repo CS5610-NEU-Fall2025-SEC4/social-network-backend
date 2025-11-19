@@ -41,6 +41,14 @@ export interface ProfileResponse {
   updatedAt?: Date | string;
   followers?: UserRef[];
   following?: UserRef[];
+  visibility?: {
+    name?: boolean;
+    bio?: boolean;
+    location?: boolean;
+    website?: boolean;
+    interests?: boolean;
+    social?: boolean;
+  };
 }
 
 export interface UserRef {
@@ -60,4 +68,5 @@ export interface PublicProfileResponse {
   social?: { twitter?: string; github?: string; linkedin?: string };
   followers?: UserRef[];
   following?: UserRef[];
+  createdAt?: Date | string;
 }

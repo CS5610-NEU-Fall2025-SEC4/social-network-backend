@@ -7,7 +7,36 @@ import {
   IsArray,
   ArrayMaxSize,
   Matches,
+  IsBoolean,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
+
+class VisibilityDto {
+  @IsOptional()
+  @IsBoolean()
+  name?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  bio?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  location?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  website?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  interests?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  social?: boolean;
+}
 
 export class UpdateUserDto {
   @IsOptional()
@@ -67,4 +96,10 @@ export class UpdateUserDto {
   @IsString()
   @MaxLength(200)
   linkedin?: string;
+
+  // Visibility flags (optional). Nested validation for per-field public/private.
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => VisibilityDto)
+  visibility?: VisibilityDto;
 }

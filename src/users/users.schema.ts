@@ -54,6 +54,31 @@ export class User {
     default: [],
   })
   following?: Types.ObjectId[];
+
+  @Prop({
+    type: {
+      name: { type: Boolean, default: true },
+      bio: { type: Boolean, default: true },
+      location: { type: Boolean, default: true },
+      website: { type: Boolean, default: true },
+      interests: { type: Boolean, default: true },
+      social: { type: Boolean, default: true },
+    },
+    required: false,
+    _id: false,
+  })
+  visibility?: {
+    name?: boolean;
+    bio?: boolean;
+    location?: boolean;
+    website?: boolean;
+    interests?: boolean;
+    social?: boolean;
+  };
+
+  // Timestamp fields added by Mongoose when using { timestamps: true }
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export type UserDocument = HydratedDocument<User>;
