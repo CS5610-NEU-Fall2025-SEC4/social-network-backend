@@ -9,6 +9,7 @@ import { SearchModule } from './search/search.module';
 import { AppConfigModule } from './config/app-config.module';
 import { AppConfigService } from './config/app-config.service';
 import { StoryModule } from './story/story.module';
+import { CommentModule } from './comment/comment.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { StoryModule } from './story/story.module';
     AuthModule,
     SearchModule,
     StoryModule,
+    CommentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
