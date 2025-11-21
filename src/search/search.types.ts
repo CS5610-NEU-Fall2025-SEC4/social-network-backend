@@ -5,11 +5,11 @@ export interface HNStory {
   children: number[];
   created_at: string;
   created_at_i: number;
-  id: number;
+  id: number | string;
   options: unknown[];
   parent_id: number | null;
   points: number;
-  story_id: number;
+  story_id: number | string;
   text: string | null;
   comment_text: string | null;
   title: string;
