@@ -8,6 +8,8 @@ import { AuthModule } from './auth/auth.module';
 import { SearchModule } from './search/search.module';
 import { AppConfigModule } from './config/app-config.module';
 import { AppConfigService } from './config/app-config.service';
+import { StoryModule } from './story/story.module';
+import { CommentModule } from './comment/comment.module';
 
 @Module({
   imports: [
@@ -24,6 +26,8 @@ import { AppConfigService } from './config/app-config.service';
     UsersModule,
     AuthModule,
     SearchModule,
+    StoryModule,
+    CommentModule,
   ],
   controllers: [AppController],
   providers: [AppService],

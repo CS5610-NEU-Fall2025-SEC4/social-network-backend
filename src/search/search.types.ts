@@ -2,19 +2,19 @@ export type StoryType = 'story' | 'comment' | 'job' | 'poll' | 'pollopt';
 
 export interface HNStory {
   author: string;
-  children: number[];
+  children: any[];
   created_at: string;
   created_at_i: number;
-  id: number;
+  id: number | string;
   options: unknown[];
-  parent_id: number | null;
+  parent_id: number | string | null;
   points: number;
-  story_id: number;
+  story_id: number | string;
   text: string | null;
   comment_text: string | null;
-  title: string;
+  title: string | null;
   type: StoryType;
-  url: string;
+  url: string | null;
   _tags: string[];
 }
 
