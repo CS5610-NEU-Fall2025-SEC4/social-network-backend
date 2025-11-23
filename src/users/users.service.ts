@@ -32,6 +32,60 @@ export class UsersService {
     private readonly appConfigService: AppConfigService,
   ) {}
 
+  async checkHNUsername(
+    username: string,
+  ): Promise<{ exists: boolean; message: string }> {
+    try {
+      const base = this.appConfigService.hnBaseUrl;
+      const url = `${base}/${username}.json`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new BadRequestException('Failed to check HackerNews username');
+      }
+
+      const data = await response.json();
+
+      if (data === null) {
+        return {
+          exists: false,
+          message: 'Username is available',
+        };
+      }
+
+      return {
+        exists: true,
+        message: 'Username already exists',
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to check HackerNews username : ' + error.message,
+      );
+    }
+  }
+
+  async checkUsernameExists(
+    username: string,
+  ): Promise<{ exists: boolean; message: string }> {
+    try {
+      const user = await this.userModel.findOne({ username }).exec();
+      if (user) {
+        return {
+          exists: true,
+          message: 'Username already exists in the database',
+        };
+      }
+      return {
+        exists: false,
+        message: 'Username is available',
+      };
+    } catch (error) {
+      throw new Error(
+        'Error checking username availability : ' + error.message,
+      );
+    }
+  }
+
   async createUser(createUserDto: CreateUserDto): Promise<CreateUserResponse> {
     const { username, email, password } = createUserDto;
 

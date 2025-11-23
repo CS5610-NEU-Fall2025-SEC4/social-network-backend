@@ -24,6 +24,11 @@ export class CommentController {
     return this.commentService.create(createCommentDto, req.user.username);
   }
 
+  @Get('story/:storyId')
+  findByStory(@Param('storyId') storyId: string) {
+    return this.commentService.findByStoryId(storyId);
+  }
+
   @Get(':commentId')
   findOne(@Param('commentId') commentId: string) {
     return this.commentService.findOne(commentId);
@@ -36,7 +41,11 @@ export class CommentController {
     @Body() updateCommentDto: UpdateCommentDto,
     @Request() req,
   ) {
-    return this.commentService.update(commentId, updateCommentDto, req.user.username);
+    return this.commentService.update(
+      commentId,
+      updateCommentDto,
+      req.user.username,
+    );
   }
 
   @UseGuards(JwtAuthGuard)

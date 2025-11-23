@@ -9,11 +9,20 @@ import {
   UseGuards,
   Request,
 } from '@nestjs/common';
+
+import { Request as ExpressRequest } from 'express';
+
 import { StoryService } from './story.service';
 import { CreateStoryDto } from './dto/create-story.dto';
 import { UpdateStoryDto } from './dto/update-story.dto';
 import type { StoryType } from 'src/search/search.types';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+
+interface AuthRequest extends ExpressRequest {
+  user: {
+    username: string;
+  };
+}
 
 @Controller('story')
 export class StoryController {
@@ -21,7 +30,7 @@ export class StoryController {
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() createStoryDto: CreateStoryDto, @Request() req) {
+  create(@Body() createStoryDto: CreateStoryDto, @Request() req: AuthRequest) {
     return this.storyService.create(createStoryDto, req.user.username);
   }
 
@@ -35,6 +44,11 @@ export class StoryController {
     return this.storyService.findByType(type);
   }
 
+  @Get(':storyId/full')
+  async findOneWithChildren(@Param('storyId') storyId: string) {
+    return this.storyService.findOneWithChildren(storyId);
+  }
+
   @Get(':storyId')
   findOne(@Param('storyId') storyId: string) {
     return this.storyService.findOneHN(storyId);
@@ -45,14 +59,14 @@ export class StoryController {
   update(
     @Param('storyId') storyId: string,
     @Body() updateStoryDto: UpdateStoryDto,
-    @Request() req,
+    @Request() req: AuthRequest,
   ) {
     return this.storyService.update(storyId, updateStoryDto, req.user.username);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':storyId')
-  remove(@Param('storyId') storyId: string, @Request() req) {
+  remove(@Param('storyId') storyId: string, @Request() req: AuthRequest) {
     return this.storyService.remove(storyId, req.user.username);
   }
 }

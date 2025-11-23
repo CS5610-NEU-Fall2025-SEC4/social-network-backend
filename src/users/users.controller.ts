@@ -69,6 +69,20 @@ export class UsersController {
     return this.usersService.updateUserProfile(req.user.userId, updates);
   }
 
+  @Get('checkHnUsername/:username')
+  async checkHNUsername(
+    @Param('username') username: string,
+  ): Promise<{ exists: boolean; message: string }> {
+    return this.usersService.checkHNUsername(username);
+  }
+
+  @Get('checkUsername/:username')
+  async checkUsername(
+    @Param('username') username: string,
+  ): Promise<{ exists: boolean; message: string }> {
+    return this.usersService.checkUsernameExists(username);
+  }
+
   @Get(':id')
   async getPublicById(@Param('id') id: string): Promise<PublicProfileResponse> {
     return this.usersService.getPublicProfile(id);
