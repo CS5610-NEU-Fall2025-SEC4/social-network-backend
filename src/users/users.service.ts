@@ -32,6 +32,17 @@ export class UsersService {
     private readonly appConfigService: AppConfigService,
   ) {}
 
+  private async isUsernameTaken(username: string): Promise<boolean> {
+    try {
+      const user = await this.userModel.findOne({ username }).exec();
+      return user !== null;
+    } catch (error) {
+      throw new BadRequestException(
+        'Error checking username availability: ' + error.message,
+      );
+    }
+  }
+
   async checkHNUsername(
     username: string,
   ): Promise<{ exists: boolean; message: string }> {
@@ -67,34 +78,24 @@ export class UsersService {
   async checkUsernameExists(
     username: string,
   ): Promise<{ exists: boolean; message: string }> {
-    try {
-      const user = await this.userModel.findOne({ username }).exec();
-      if (user) {
-        return {
-          exists: true,
-          message: 'Username already exists in the database',
-        };
-      }
-      return {
-        exists: false,
-        message: 'Username is available',
-      };
-    } catch (error) {
-      throw new Error(
-        'Error checking username availability : ' + error.message,
-      );
-    }
+    const exists = await this.isUsernameTaken(username);
+    return {
+      exists,
+      message: exists ? 'Username already exists.' : 'Username is available',
+    };
   }
 
   async createUser(createUserDto: CreateUserDto): Promise<CreateUserResponse> {
     const { username, email, password } = createUserDto;
 
-    const existing = await this.userModel.findOne({
-      $or: [{ username: username }, { email: email }],
-    });
+    const usernameTaken = await this.isUsernameTaken(username);
+    if (usernameTaken) {
+      throw new BadRequestException('Username already exists');
+    }
 
-    if (existing) {
-      throw new BadRequestException('Username or email already exists');
+    const emailTaken = await this.userModel.findOne({ email }).exec();
+    if (emailTaken) {
+      throw new BadRequestException('Email already exists');
     }
 
     const hashedPassword = await BcryptUtil.hashPassword(
