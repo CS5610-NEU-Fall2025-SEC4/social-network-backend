@@ -26,6 +26,13 @@ export class AppConfigService {
     );
   }
 
+  get hnBaseUrl(): string {
+    return this.configService.get<string>(
+      'HN_BASE_URL',
+      'https://hacker-news.firebaseio.com/v0/user',
+    );
+  }
+
   get apiPort(): number {
     const portStr = this.configService.get<string>('PORT', '3001');
     const port = parseInt(portStr, 10);

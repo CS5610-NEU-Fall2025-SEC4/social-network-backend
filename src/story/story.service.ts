@@ -7,13 +7,17 @@ import {
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Story } from './story.schema';
+import { Comment } from '../comment/comment.schema';
 import { CreateStoryDto } from './dto/create-story.dto';
 import { UpdateStoryDto } from './dto/update-story.dto';
-import { HNStory, StoryType } from 'src/search/search.types';
+import { HNStory, HNStoryItem, StoryType } from 'src/search/search.types';
 
 @Injectable()
 export class StoryService {
-  constructor(@InjectModel(Story.name) private storyModel: Model<Story>) {}
+  constructor(
+    @InjectModel(Story.name) private storyModel: Model<Story>,
+    @InjectModel(Comment.name) private commentModel: Model<Comment>,
+  ) {}
 
   private _toHNStory(story: Story): HNStory {
     const tags = [...(story._tags || [])];
@@ -46,6 +50,100 @@ export class StoryService {
     };
   }
 
+  private _commentToHNStory(comment: Comment): HNStory {
+    return {
+      author: comment.author,
+      children: comment.children,
+      created_at: new Date(comment.createdAt).toISOString(),
+      created_at_i: comment.created_at_i,
+      id: comment.comment_id,
+      options: [],
+      parent_id: comment.parent_id,
+      points: comment.points,
+      story_id: comment.story_id,
+      text: comment.text,
+      comment_text: comment.text,
+      title: null,
+      type: 'comment',
+      url: null,
+      _tags: ['comment'],
+    };
+  }
+
+  private async _buildCommentWithChildren(
+    comment: Comment,
+  ): Promise<HNStoryItem> {
+    const baseComment = this._commentToHNStory(comment);
+
+    if (!comment.children || comment.children.length === 0) {
+      return {
+        ...baseComment,
+        children: [] as HNStoryItem[],
+      } as HNStoryItem;
+    }
+
+    const childrenPromises = comment.children.map(async (childId) => {
+      try {
+        const childComment = await this.commentModel
+          .findOne({ comment_id: childId })
+          .exec();
+        if (!childComment) {
+          console.warn(`Child comment ${childId} not found`);
+          return null;
+        }
+        return this._buildCommentWithChildren(childComment);
+      } catch (error) {
+        console.error(`Error fetching child comment ${childId}:`, error);
+        return null;
+      }
+    });
+
+    const children = (await Promise.all(childrenPromises)).filter(
+      (child): child is HNStoryItem => child !== null,
+    );
+
+    return {
+      ...baseComment,
+      children,
+    } as HNStoryItem;
+  }
+
+  private async _buildStoryWithChildren(story: Story): Promise<HNStoryItem> {
+    const baseStory = this._toHNStory(story);
+
+    if (!story.children || story.children.length === 0) {
+      return {
+        ...baseStory,
+        children: [] as HNStoryItem[],
+      } as HNStoryItem;
+    }
+
+    const childrenPromises = story.children.map(async (childId) => {
+      try {
+        const childComment = await this.commentModel
+          .findOne({ comment_id: childId })
+          .exec();
+        if (!childComment) {
+          console.warn(`Child comment ${childId} not found`);
+          return null;
+        }
+        return this._buildCommentWithChildren(childComment);
+      } catch (error) {
+        console.error(`Error fetching child ${childId}:`, error);
+        return null;
+      }
+    });
+
+    const children = (await Promise.all(childrenPromises)).filter(
+      (child): child is HNStoryItem => child !== null,
+    );
+
+    return {
+      ...baseStory,
+      children,
+    } as HNStoryItem;
+  }
+
   async create(
     createStoryDto: CreateStoryDto,
     username: string,
@@ -62,7 +160,7 @@ export class StoryService {
       const savedStory = await createdStory.save();
 
       return this._toHNStory(savedStory);
-    } catch (error) {
+    } catch (error: any) {
       if (error.code === 11000) {
         throw new ConflictException(
           'Story with this ID or Story ID already exists',
@@ -75,7 +173,7 @@ export class StoryService {
 
   async findAll(): Promise<HNStory[]> {
     const stories = await this.storyModel.find().exec();
-    return stories.map(this._toHNStory);
+    return stories.map((story) => this._toHNStory(story));
   }
 
   async findOneByMongoId(mongoId: string): Promise<Story> {
@@ -97,6 +195,11 @@ export class StoryService {
   async findOneHN(storyId: string): Promise<HNStory> {
     const story = await this.findOne(storyId);
     return this._toHNStory(story);
+  }
+
+  async findOneWithChildren(storyId: string): Promise<HNStoryItem> {
+    const story = await this.findOne(storyId);
+    return this._buildStoryWithChildren(story);
   }
 
   async update(
@@ -132,6 +235,6 @@ export class StoryService {
 
   async findByType(type: StoryType): Promise<HNStory[]> {
     const stories = await this.storyModel.find({ type }).exec();
-    return stories.map(this._toHNStory);
+    return stories.map((story) => this._toHNStory(story));
   }
 }

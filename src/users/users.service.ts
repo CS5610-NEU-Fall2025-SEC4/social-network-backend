@@ -32,15 +32,70 @@ export class UsersService {
     private readonly appConfigService: AppConfigService,
   ) {}
 
+  private async isUsernameTaken(username: string): Promise<boolean> {
+    try {
+      const user = await this.userModel.findOne({ username }).exec();
+      return user !== null;
+    } catch (error) {
+      throw new BadRequestException(
+        'Error checking username availability: ' + error.message,
+      );
+    }
+  }
+
+  async checkHNUsername(
+    username: string,
+  ): Promise<{ exists: boolean; message: string }> {
+    try {
+      const base = this.appConfigService.hnBaseUrl;
+      const url = `${base}/${username}.json`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new BadRequestException('Failed to check HackerNews username');
+      }
+
+      const data = await response.json();
+
+      if (data === null) {
+        return {
+          exists: false,
+          message: 'Username is available',
+        };
+      }
+
+      return {
+        exists: true,
+        message: 'Username already exists',
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        'Failed to check HackerNews username : ' + error.message,
+      );
+    }
+  }
+
+  async checkUsernameExists(
+    username: string,
+  ): Promise<{ exists: boolean; message: string }> {
+    const exists = await this.isUsernameTaken(username);
+    return {
+      exists,
+      message: exists ? 'Username already exists.' : 'Username is available',
+    };
+  }
+
   async createUser(createUserDto: CreateUserDto): Promise<CreateUserResponse> {
     const { username, email, password } = createUserDto;
 
-    const existing = await this.userModel.findOne({
-      $or: [{ username: username }, { email: email }],
-    });
+    const usernameTaken = await this.isUsernameTaken(username);
+    if (usernameTaken) {
+      throw new BadRequestException('Username already exists');
+    }
 
-    if (existing) {
-      throw new BadRequestException('Username or email already exists');
+    const emailTaken = await this.userModel.findOne({ email }).exec();
+    if (emailTaken) {
+      throw new BadRequestException('Email already exists');
     }
 
     const hashedPassword = await BcryptUtil.hashPassword(
