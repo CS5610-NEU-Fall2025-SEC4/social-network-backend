@@ -1,6 +1,9 @@
+import { UserRole } from './user-roles.enum';
+
 export interface UserResponse {
   username: string;
   email: string;
+  role: UserRole;
 }
 export interface CreateUserResponse {
   message: string;
@@ -9,21 +12,25 @@ export interface CreateUserResponse {
 export interface LoginResponse {
   message: string;
   access_token: string;
+  role: UserRole;
 }
 
 export interface AuthCheckResponse {
   authenticated: boolean;
   userId: string;
   username: string;
+  role: UserRole;
 }
 export interface JwtPayload {
   username: string;
   sub: string;
+  role: UserRole;
 }
 export interface ValidatedUser {
   userId: string;
   username: string;
   email: string;
+  role: UserRole;
 }
 
 export interface ProfileResponse {
@@ -49,6 +56,8 @@ export interface ProfileResponse {
     interests?: boolean;
     social?: boolean;
   };
+  role: UserRole;
+  isBlocked: boolean;
 }
 
 export interface UserRef {
@@ -69,4 +78,5 @@ export interface PublicProfileResponse {
   followers?: UserRef[];
   following?: UserRef[];
   createdAt?: Date | string;
+  role: UserRole;
 }

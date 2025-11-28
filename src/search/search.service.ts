@@ -68,7 +68,9 @@ export class SearchService {
   }
 
   private async searchLocalStories(params: SearchParams): Promise<HNStory[]> {
-    const query: any = {};
+    const query: any = {
+      isDeleted: { $ne: true },
+    };
 
     if (params.query && params.query.trim() !== '') {
       query.$or = [

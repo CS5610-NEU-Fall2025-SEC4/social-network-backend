@@ -11,6 +11,8 @@ import { Comment } from '../comment/comment.schema';
 import { CreateStoryDto } from './dto/create-story.dto';
 import { UpdateStoryDto } from './dto/update-story.dto';
 import { HNStory, HNStoryItem, StoryType } from 'src/search/search.types';
+import { ValidatedUser } from 'src/users/types/user-response.types';
+import { UserRole } from 'src/users/types/user-roles.enum';
 
 @Injectable()
 export class StoryService {
@@ -147,7 +149,17 @@ export class StoryService {
   async create(
     createStoryDto: CreateStoryDto,
     username: string,
+    userRole: string,
   ): Promise<HNStory> {
+    if (createStoryDto.type === 'job') {
+      if (
+        userRole !== UserRole.EMPLOYER.toString() &&
+        userRole !== UserRole.ADMIN.toString()
+      ) {
+        throw new ForbiddenException('Only employers can create job postings');
+      }
+    }
+
     const createdStory = new this.storyModel({
       ...createStoryDto,
 
@@ -172,12 +184,19 @@ export class StoryService {
   }
 
   async findAll(): Promise<HNStory[]> {
-    const stories = await this.storyModel.find().exec();
+    const stories = await this.storyModel
+      .find({ isDeleted: { $ne: true } })
+      .exec();
     return stories.map((story) => this._toHNStory(story));
   }
 
   async findOneByMongoId(mongoId: string): Promise<Story> {
-    const story = await this.storyModel.findById(mongoId).exec();
+    const story = await this.storyModel
+      .findOne({
+        _id: mongoId,
+        isDeleted: { $ne: true }, // ✨ ADD THIS
+      })
+      .exec();
     if (!story) {
       throw new NotFoundException(`Story with ID "${mongoId}" not found`);
     }
@@ -185,7 +204,9 @@ export class StoryService {
   }
 
   async findOne(storyId: string): Promise<Story> {
-    const story = await this.storyModel.findOne({ story_id: storyId }).exec();
+    const story = await this.storyModel
+      .findOne({ story_id: storyId, isDeleted: { $ne: true } })
+      .exec();
     if (!story) {
       throw new NotFoundException(`Story with ID "${storyId}" not found`);
     }
@@ -202,39 +223,88 @@ export class StoryService {
     return this._buildStoryWithChildren(story);
   }
 
+  async findByType(type: StoryType): Promise<HNStory[]> {
+    const stories = await this.storyModel
+      .find({
+        type,
+        isDeleted: { $ne: true },
+      })
+      .exec();
+    return stories.map((story) => this._toHNStory(story));
+  }
+
   async update(
     storyId: string,
     updateStoryDto: UpdateStoryDto,
     username: string,
   ): Promise<HNStory> {
     const story = await this.findOne(storyId);
+
     if (story.author !== username) {
-      throw new ForbiddenException('You are not allowed to update this story');
+      throw new ForbiddenException('You can only update your own stories');
     }
+
     const existingStory = await this.storyModel
       .findOneAndUpdate({ story_id: storyId }, updateStoryDto, { new: true })
       .exec();
+
     if (!existingStory) {
       throw new NotFoundException(`Story with ID "${storyId}" not found`);
     }
+
     return this._toHNStory(existingStory);
   }
 
-  async remove(storyId: string, username: string): Promise<void> {
-    const story = await this.findOne(storyId);
-    if (story.author !== username) {
-      throw new ForbiddenException('You are not allowed to delete this story');
-    }
-    const result = await this.storyModel
-      .findOneAndDelete({ story_id: storyId })
+  async remove(
+    storyId: string,
+    user: ValidatedUser,
+    reason?: string,
+  ): Promise<{ message: string; deletedStory?: any }> {
+    const story = await this.storyModel
+      .findOne({ story_id: storyId, isDeleted: { $ne: true } })
       .exec();
-    if (!result) {
+
+    if (!story) {
       throw new NotFoundException(`Story with ID "${storyId}" not found`);
     }
-  }
 
-  async findByType(type: StoryType): Promise<HNStory[]> {
-    const stories = await this.storyModel.find({ type }).exec();
-    return stories.map((story) => this._toHNStory(story));
+    if (user.role === UserRole.USER || user.role === UserRole.EMPLOYER) {
+      if (story.author !== user.username) {
+        throw new ForbiddenException('You can only delete your own stories');
+      }
+
+      story.isDeleted = true;
+      story.deletedAt = new Date();
+      story.deletedBy = user.username;
+      await story.save();
+
+      return {
+        message: 'Your story has been deleted successfully',
+        deletedStory: {
+          story_id: story.story_id,
+          title: story.title,
+        },
+      };
+    }
+
+    if (user.role === UserRole.ADMIN) {
+      story.isDeleted = true;
+      story.deletedAt = new Date();
+      story.deletedBy = user.username;
+      story.deletionReason = reason || 'Deleted by admin';
+      await story.save();
+
+      return {
+        message: `Story "${story.title}" has been deleted by admin`,
+        deletedStory: {
+          story_id: story.story_id,
+          title: story.title,
+          deletedBy: user.username,
+          deletionReason: story.deletionReason,
+        },
+      };
+    }
+
+    throw new ForbiddenException('Insufficient permissions');
   }
 }

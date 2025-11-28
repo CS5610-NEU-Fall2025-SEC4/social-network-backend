@@ -14,5 +14,6 @@ import { StoryService } from './story.service';
   ],
   controllers: [StoryController],
   providers: [StoryService],
+  exports: [StoryService],
 })
 export class StoryModule {}

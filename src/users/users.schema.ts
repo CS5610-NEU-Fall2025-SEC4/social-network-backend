@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument, Types } from 'mongoose';
+import { UserRole } from './types/user-roles.enum';
 
 @Schema({ timestamps: true })
 export class User {
@@ -75,6 +76,23 @@ export class User {
     interests?: boolean;
     social?: boolean;
   };
+
+  @Prop({
+    type: String,
+    enum: UserRole,
+    default: UserRole.USER,
+    required: true,
+  })
+  role: UserRole;
+
+  @Prop({ type: Boolean, default: false })
+  isBlocked: boolean;
+
+  @Prop({ type: Date, required: false })
+  blockedAt?: Date;
+
+  @Prop({ type: String, required: false })
+  blockedBy?: string;
 
   createdAt?: Date;
   updatedAt?: Date;

@@ -7,8 +7,10 @@ import { Story, StorySchema } from 'src/story/story.schema';
 
 @Module({
   imports: [
-    MongooseModule.forFeature([{ name: Comment.name, schema: CommentSchema }]),
-    MongooseModule.forFeature([{ name: Story.name, schema: StorySchema }]),
+    MongooseModule.forFeature([
+      { name: Comment.name, schema: CommentSchema },
+      { name: Story.name, schema: StorySchema },
+    ]),
   ],
   controllers: [CommentController],
   providers: [CommentService],

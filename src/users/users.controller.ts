@@ -51,6 +51,7 @@ export class UsersController {
       authenticated: true,
       userId: req.user.userId,
       username: req.user.username,
+      role: req.user.role,
     };
   }
 

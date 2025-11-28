@@ -17,11 +17,13 @@ import { CreateStoryDto } from './dto/create-story.dto';
 import { UpdateStoryDto } from './dto/update-story.dto';
 import type { StoryType } from 'src/search/search.types';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/roles.guard';
+import { Roles } from 'src/auth/roles.decorator';
+import { ValidatedUser } from 'src/users/types/user-response.types';
+import { UserRole } from 'src/users/types/user-roles.enum';
 
 interface AuthRequest extends ExpressRequest {
-  user: {
-    username: string;
-  };
+  user: ValidatedUser;
 }
 
 @Controller('story')
@@ -31,7 +33,11 @@ export class StoryController {
   @UseGuards(JwtAuthGuard)
   @Post()
   create(@Body() createStoryDto: CreateStoryDto, @Request() req: AuthRequest) {
-    return this.storyService.create(createStoryDto, req.user.username);
+    return this.storyService.create(
+      createStoryDto,
+      req.user.username,
+      req.user.role,
+    );
   }
 
   @Get()
@@ -64,9 +70,14 @@ export class StoryController {
     return this.storyService.update(storyId, updateStoryDto, req.user.username);
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER, UserRole.EMPLOYER, UserRole.ADMIN)
   @Delete(':storyId')
-  remove(@Param('storyId') storyId: string, @Request() req: AuthRequest) {
-    return this.storyService.remove(storyId, req.user.username);
+  remove(
+    @Param('storyId') storyId: string,
+    @Body() body: { reason?: string },
+    @Request() req: AuthRequest,
+  ) {
+    return this.storyService.remove(storyId, req.user, body?.reason);
   }
 }
