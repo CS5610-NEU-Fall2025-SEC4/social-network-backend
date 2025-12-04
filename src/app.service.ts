@@ -15,7 +15,8 @@ export class AppService {
 
   getHello(): string {
     const port = this.appConfig.apiPort;
-    const cors = this.config.get<string>('CORS_ORIGIN') || 'N/A';
+    const rawOrigins = this.config.get<string>('CORS_ORIGINS') || '';
+    const cors = rawOrigins || 'N/A';
     const algolia = this.appConfig.algoliaBaseUrl;
     const mongo = this.config.get<string>('MONGODB_URI');
     const mongoFull = mongo || 'N/A';
@@ -103,7 +104,7 @@ export class AppService {
       <div class="section">
         <h2>Configuration</h2>
         <div class="kv mono">
-          <div class="key">CORS Origin</div><div class="val">${cors}</div>
+          <div class="key">CORS Origins</div><div class="val">${cors}</div>
           <div class="key">Algolia Base</div><div class="val">${algolia}</div>
           <div class="key">Mongo URI</div><div class="val mono">${mongoFull}</div>
         </div>
