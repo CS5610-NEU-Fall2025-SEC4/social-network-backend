@@ -35,6 +35,21 @@ export class Story extends Document {
   @Prop([String])
   _tags: string[];
 
+  @Prop({ default: false })
+  isDeleted: boolean;
+
+  @Prop()
+  deletedAt?: Date;
+
+  @Prop()
+  deletedBy?: string;
+
+  @Prop()
+  deletionReason?: string;
+
+  @Prop({ default: false })
+  deletedDueToBlock?: boolean;
+
   createdAt: Date;
 }
 

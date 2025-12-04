@@ -10,6 +10,8 @@ import { AppConfigModule } from './config/app-config.module';
 import { AppConfigService } from './config/app-config.service';
 import { StoryModule } from './story/story.module';
 import { CommentModule } from './comment/comment.module';
+import { AdminModule } from './admin/admin.module';
+import { ReportModule } from './report/report.module';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { CommentModule } from './comment/comment.module';
     SearchModule,
     StoryModule,
     CommentModule,
+    AdminModule,
+    ReportModule,
   ],
   controllers: [AppController],
   providers: [AppService],

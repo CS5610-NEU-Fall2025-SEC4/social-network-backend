@@ -10,9 +10,18 @@ import {
   Request,
 } from '@nestjs/common';
 import { CommentService } from './comment.service';
+import { Request as ExpressRequest } from 'express';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { JwtAuthGuard } from 'src/auth/jwt-auth.guard';
+import { RolesGuard } from 'src/auth/roles.guard';
+import { Roles } from 'src/auth/roles.decorator';
+import { ValidatedUser } from 'src/users/types/user-response.types';
+import { UserRole } from 'src/users/types/user-roles.enum';
+
+interface AuthRequest extends ExpressRequest {
+  user: ValidatedUser;
+}
 
 @Controller('comment')
 export class CommentController {
@@ -39,7 +48,7 @@ export class CommentController {
   update(
     @Param('commentId') commentId: string,
     @Body() updateCommentDto: UpdateCommentDto,
-    @Request() req,
+    @Request() req: AuthRequest,
   ) {
     return this.commentService.update(
       commentId,
@@ -48,9 +57,14 @@ export class CommentController {
     );
   }
 
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.USER, UserRole.EMPLOYER, UserRole.ADMIN)
   @Delete(':commentId')
-  remove(@Param('commentId') commentId: string, @Request() req) {
-    return this.commentService.remove(commentId, req.user.username);
+  remove(
+    @Param('commentId') commentId: string,
+    @Body() body: { reason?: string },
+    @Request() req: AuthRequest,
+  ) {
+    return this.commentService.remove(commentId, req.user, body?.reason);
   }
 }

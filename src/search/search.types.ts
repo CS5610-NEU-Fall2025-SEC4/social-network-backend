@@ -17,6 +17,8 @@ export interface HNStory {
   type: StoryType;
   url: string | null;
   _tags: string[];
+  canEdit?: boolean;
+  canDelete?: boolean;
 }
 
 export interface HNStoryItem {

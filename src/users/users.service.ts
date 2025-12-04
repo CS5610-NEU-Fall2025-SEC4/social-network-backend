@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { User, UserDocument } from './users.schema';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
@@ -22,12 +21,16 @@ import {
   PublicProfileResponse,
   UserRef,
 } from './types/user-response.types';
+import { User, UserDocument } from './users.schema';
+import { BlockedEmail, BlockedEmailDocument } from './blocked-email.schema';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectModel(User.name)
     private readonly userModel: Model<UserDocument>,
+    @InjectModel(BlockedEmail.name)
+    private readonly blockedEmailModel: Model<BlockedEmailDocument>,
     private readonly jwtService: JwtService,
     private readonly appConfigService: AppConfigService,
   ) {}
@@ -96,6 +99,16 @@ export class UsersService {
   async createUser(createUserDto: CreateUserDto): Promise<CreateUserResponse> {
     const { username, email, password } = createUserDto;
 
+    const blockedEmail = await this.blockedEmailModel
+      .findOne({ email: email.toLowerCase() })
+      .exec();
+
+    if (blockedEmail) {
+      throw new BadRequestException(
+        'This email address is not allowed to register.',
+      );
+    }
+
     const usernameTaken = await this.isUsernameTaken(username);
     if (usernameTaken) {
       throw new BadRequestException('Username already exists');
@@ -122,6 +135,7 @@ export class UsersService {
         user: {
           username: newUser.username,
           email: newUser.email,
+          role: newUser.role,
         },
       };
     } catch (error: unknown) {
@@ -143,6 +157,12 @@ export class UsersService {
       throw new BadRequestException('Invalid username or password');
     }
 
+    if (user.isBlocked) {
+      throw new BadRequestException(
+        'Your account has been blocked. Please contact support.',
+      );
+    }
+
     const isPasswordMatching = await BcryptUtil.comparePassword(
       password,
       user.password,
@@ -155,10 +175,11 @@ export class UsersService {
     const payload: JwtPayload = {
       username: user.username,
       sub: user._id.toString(),
+      role: user.role,
     };
     const access_token = JwtUtil.generateToken(this.jwtService, payload);
 
-    return { message: 'Login successful', access_token };
+    return { message: 'Login successful', access_token, role: user.role };
   }
 
   async getProfile(userId: string): Promise<ProfileResponse> {
@@ -199,6 +220,8 @@ export class UsersService {
       createdAt: user.createdAt as Date,
       updatedAt: user.updatedAt as Date,
       visibility: user.visibility ?? {},
+      role: user.role,
+      isBlocked: user.isBlocked,
     };
   }
 
@@ -312,6 +335,8 @@ export class UsersService {
       createdAt: user.createdAt as Date,
       updatedAt: user.updatedAt as Date,
       visibility: user.visibility ?? {},
+      role: user.role,
+      isBlocked: user.isBlocked,
     };
   }
 
@@ -356,6 +381,7 @@ export class UsersService {
       followers,
       following,
       createdAt: user.createdAt as Date,
+      role: user.role,
     };
   }
 }

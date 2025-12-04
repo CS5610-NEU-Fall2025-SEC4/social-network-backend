@@ -11,6 +11,8 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { UpdateCommentDto } from './dto/update-comment.dto';
 import { Story } from 'src/story/story.schema';
 import { HNStory, HNStoryItem } from 'src/search/search.types';
+import { ValidatedUser } from 'src/users/types/user-response.types';
+import { UserRole } from 'src/users/types/user-roles.enum';
 
 @Injectable()
 export class CommentService {
@@ -21,7 +23,8 @@ export class CommentService {
 
   private _toHNStory(comment: Comment): HNStory {
     return {
-      author: comment.author,
+      author: comment.isDeleted ? '[deleted]' : comment.author,
+      text: comment.isDeleted ? '[deleted by admin]' : comment.text,
       children: comment.children,
       created_at: new Date(comment.createdAt).toISOString(),
       created_at_i: comment.created_at_i,
@@ -30,8 +33,7 @@ export class CommentService {
       parent_id: comment.parent_id,
       points: comment.points,
       story_id: comment.story_id,
-      text: comment.text,
-      comment_text: comment.text,
+      comment_text: comment.isDeleted ? '[deleted by admin]' : comment.text,
       title: null,
       type: 'comment',
       url: null,
@@ -127,7 +129,10 @@ export class CommentService {
 
   async findOne(commentId: string): Promise<HNStory> {
     const comment = await this.commentModel
-      .findOne({ comment_id: commentId })
+      .findOne({
+        comment_id: commentId,
+        isDeleted: { $ne: true },
+      })
       .exec();
     if (!comment) {
       throw new NotFoundException(`Comment with ID "${commentId}" not found`);
@@ -137,7 +142,11 @@ export class CommentService {
 
   async findByStoryId(storyId: string): Promise<HNStoryItem[]> {
     const topLevelComments = await this.commentModel
-      .find({ story_id: storyId, parent_id: null })
+      .find({
+        story_id: storyId,
+        parent_id: null,
+        isDeleted: { $ne: true },
+      })
       .exec();
 
     const commentsWithChildren = await Promise.all(
@@ -157,66 +166,108 @@ export class CommentService {
     const comment = await this.commentModel
       .findOne({ comment_id: commentId })
       .exec();
+
     if (!comment) {
       throw new NotFoundException(`Comment with ID "${commentId}" not found`);
     }
+
     if (comment.author !== username) {
-      throw new ForbiddenException(
-        'You are not allowed to update this comment',
-      );
+      throw new ForbiddenException('You can only update your own comments');
     }
+
     const existingComment = await this.commentModel
       .findOneAndUpdate({ comment_id: commentId }, updateCommentDto, {
         new: true,
       })
       .exec();
+
     if (!existingComment) {
       throw new NotFoundException(`Comment with ID "${commentId}" not found`);
     }
+
     return this._toHNStory(existingComment);
   }
 
-  async remove(commentId: string, username: string): Promise<void> {
+  async remove(
+    commentId: string,
+    user: ValidatedUser,
+    reason?: string,
+  ): Promise<{ message: string; deletedComment?: any }> {
     const comment = await this.commentModel
       .findOne({ comment_id: commentId })
       .exec();
+
     if (!comment) {
       throw new NotFoundException(`Comment with ID "${commentId}" not found`);
     }
-    if (comment.author !== username) {
-      throw new ForbiddenException(
-        'You are not allowed to delete this comment',
-      );
-    }
 
-    if (comment.children && comment.children.length > 0) {
-      comment.text = '[deleted]';
-      comment.author = '[deleted]';
-      await comment.save();
-    } else {
-      const result = await this.commentModel
-        .findOneAndDelete({ comment_id: commentId })
-        .exec();
-      if (!result) {
-        throw new NotFoundException(`Comment with ID "${commentId}" not found`);
+    if (user.role === UserRole.USER || user.role == UserRole.EMPLOYER) {
+      if (comment.author !== user.username) {
+        throw new ForbiddenException('You can only delete your own comments');
       }
 
-      if (comment.parent_id) {
-        await this.commentModel.updateOne(
-          { comment_id: comment.parent_id },
-          { $pull: { children: commentId } },
-        );
+      if (comment.children && comment.children.length > 0) {
+        comment.text = '[deleted]';
+        comment.author = '[deleted]';
+        comment.isDeleted = true;
+        comment.deletedAt = new Date();
+        comment.deletedBy = user.username;
+        await comment.save();
+
+        return {
+          message: `Comment soft-deleted (has ${comment.children.length} replies)`,
+          deletedComment: {
+            comment_id: comment.comment_id,
+            hasChildren: true,
+          },
+        };
       } else {
-        const story = await this.storyModel
-          .findOne({ story_id: comment.story_id })
+        await this.commentModel
+          .findOneAndDelete({ comment_id: commentId })
           .exec();
-        if (story) {
+
+        if (comment.parent_id) {
+          await this.commentModel.updateOne(
+            { comment_id: comment.parent_id },
+            { $pull: { children: commentId } },
+          );
+        } else {
           await this.storyModel.updateOne(
             { story_id: comment.story_id },
             { $pull: { children: commentId } },
           );
         }
+
+        return {
+          message: 'Your comment has been deleted successfully',
+          deletedComment: {
+            comment_id: commentId,
+            hasChildren: false,
+          },
+        };
       }
     }
+
+    if (user.role === UserRole.ADMIN) {
+      comment.isDeleted = true;
+      comment.deletedAt = new Date();
+      comment.deletedBy = user.username;
+      comment.deletionReason = reason || 'Deleted by admin';
+      comment.text = '[deleted by admin]';
+      comment.author = '[deleted]';
+      await comment.save();
+
+      return {
+        message: 'Comment has been deleted by admin',
+        deletedComment: {
+          comment_id: comment.comment_id,
+          deletedBy: user.username,
+          deletionReason: comment.deletionReason,
+          hasChildren: comment.children?.length > 0,
+        },
+      };
+    }
+
+    throw new ForbiddenException('Insufficient permissions');
   }
 }

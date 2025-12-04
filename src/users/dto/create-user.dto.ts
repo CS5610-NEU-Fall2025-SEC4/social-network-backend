@@ -1,4 +1,12 @@
-import { IsEmail, IsNotEmpty, MinLength, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  MinLength,
+  Matches,
+  IsEnum,
+  IsOptional,
+} from 'class-validator';
+import { UserRole } from '../types/user-roles.enum';
 
 export class CreateUserDto {
   @IsNotEmpty()
@@ -20,4 +28,8 @@ export class CreateUserDto {
       'Password must contain at least one uppercase letter, one lowercase letter, one number, one special character, no spaces, and be at least 8 characters long.',
   })
   password: string;
+
+  @IsOptional()
+  @IsEnum(UserRole)
+  role?: UserRole;
 }
