@@ -30,7 +30,7 @@ interface AuthenticatedRequest extends Request {
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) {}
+  constructor(private readonly usersService: UsersService) { }
 
   @Post('register')
   async register(
@@ -72,15 +72,22 @@ export class UsersController {
   @Get('checkHnUsername/:username')
   async checkHNUsername(
     @Param('username') username: string,
-  ): Promise<{ exists: boolean; message: string }> {
+  ): Promise<{ exists: boolean; message: string; }> {
     return this.usersService.checkHNUsername(username);
   }
 
   @Get('checkUsername/:username')
   async checkUsername(
     @Param('username') username: string,
-  ): Promise<{ exists: boolean; message: string }> {
+  ): Promise<{ exists: boolean; message: string; }> {
     return this.usersService.checkUsernameExists(username);
+  }
+
+  @Get('search/:username')
+  async getUserIdByUsername(
+    @Param('username') username: string,
+  ): Promise<{ id: string; }> {
+    return this.usersService.getUserIdByUsername(username);
   }
 
   @Get(':id')

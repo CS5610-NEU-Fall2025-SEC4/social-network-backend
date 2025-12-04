@@ -85,6 +85,14 @@ export class UsersService {
     };
   }
 
+  async getUserIdByUsername(username: string): Promise<{ id: string }> {
+    const user = await this.userModel.findOne({ username }).exec();
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    return { id: user._id.toString() };
+  }
+
   async createUser(createUserDto: CreateUserDto): Promise<CreateUserResponse> {
     const { username, email, password } = createUserDto;
 
