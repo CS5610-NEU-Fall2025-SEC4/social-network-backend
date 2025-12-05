@@ -81,5 +81,3 @@ export interface PublicProfileResponse {
   createdAt?: Date | string;
   role: UserRole;
 }
-
-// Bookmarks store only item IDs now
