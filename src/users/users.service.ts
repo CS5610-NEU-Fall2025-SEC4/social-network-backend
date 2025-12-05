@@ -217,6 +217,7 @@ export class UsersService {
       social: user.social ?? {},
       followers,
       following,
+      bookmarks: user.bookmarks ?? [],
       createdAt: user.createdAt as Date,
       updatedAt: user.updatedAt as Date,
       visibility: user.visibility ?? {},
@@ -332,6 +333,7 @@ export class UsersService {
       social: user.social ?? {},
       followers,
       following,
+      bookmarks: user.bookmarks ?? [],
       createdAt: user.createdAt as Date,
       updatedAt: user.updatedAt as Date,
       visibility: user.visibility ?? {},
@@ -382,6 +384,83 @@ export class UsersService {
       following,
       createdAt: user.createdAt as Date,
       role: user.role,
+    };
+  }
+
+  async followUser(
+    meId: string,
+    targetUserId: string,
+  ): Promise<{ message: string }> {
+    if (meId === targetUserId)
+      throw new BadRequestException('Cannot follow yourself');
+    const [me, target] = await Promise.all([
+      this.userModel.findById(meId).exec(),
+      this.userModel.findById(targetUserId).exec(),
+    ]);
+    if (!me || !target) throw new NotFoundException('User not found');
+    const isAlreadyFollowing = (me.following ?? []).some(
+      (id) => String(id) === String(target._id),
+    );
+    if (isAlreadyFollowing) return { message: 'Already following' };
+    me.following = [...(me.following ?? []), target._id];
+    target.followers = [...(target.followers ?? []), me._id];
+    await Promise.all([me.save(), target.save()]);
+    return { message: 'Followed successfully' };
+  }
+
+  async unfollowUser(
+    meId: string,
+    targetUserId: string,
+  ): Promise<{ message: string }> {
+    if (meId === targetUserId)
+      throw new BadRequestException('Cannot unfollow yourself');
+    const [me, target] = await Promise.all([
+      this.userModel.findById(meId).exec(),
+      this.userModel.findById(targetUserId).exec(),
+    ]);
+    if (!me || !target) throw new NotFoundException('User not found');
+    me.following = (me.following ?? []).filter(
+      (id) => String(id) !== String(target._id),
+    );
+    target.followers = (target.followers ?? []).filter(
+      (id) => String(id) !== String(me._id),
+    );
+    await Promise.all([me.save(), target.save()]);
+    return { message: 'Unfollowed successfully' };
+  }
+
+  async addBookmark(
+    userId: string,
+    bookmark: { itemId: string },
+  ): Promise<{ message: string; bookmarks: string[] }> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) throw new NotFoundException('User not found');
+    const exists = (user.bookmarks ?? []).some((id) => id === bookmark.itemId);
+    if (!exists) {
+      user.bookmarks = [...(user.bookmarks ?? []), bookmark.itemId];
+      await user.save();
+    }
+    return {
+      message: exists ? 'Already bookmarked' : 'Bookmarked successfully',
+      bookmarks: user.bookmarks ?? [],
+    };
+  }
+
+  async removeBookmark(
+    userId: string,
+    bookmark: { itemId: string },
+  ): Promise<{ message: string; bookmarks: string[] }> {
+    const user = await this.userModel.findById(userId).exec();
+    if (!user) throw new NotFoundException('User not found');
+    const before = user.bookmarks ?? [];
+    user.bookmarks = before.filter((id) => id !== bookmark.itemId);
+    await user.save();
+    return {
+      message:
+        before.length === (user.bookmarks ?? []).length
+          ? 'Bookmark not found'
+          : 'Bookmark removed',
+      bookmarks: user.bookmarks ?? [],
     };
   }
 }

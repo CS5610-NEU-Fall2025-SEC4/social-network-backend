@@ -48,6 +48,7 @@ export interface ProfileResponse {
   updatedAt?: Date | string;
   followers?: UserRef[];
   following?: UserRef[];
+  bookmarks?: string[];
   visibility?: {
     name?: boolean;
     bio?: boolean;

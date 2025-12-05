@@ -12,9 +12,34 @@ async function bootstrap() {
 
   app.use(helmet());
 
+  const rawOrigins = configService.get<string>('CORS_ORIGINS') || '';
+  const allowedOrigins = rawOrigins
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
   app.enableCors({
-    origin: configService.get<string>('CORS_ORIGIN'),
+    origin: (
+      origin: string | undefined,
+      callback: (err: Error | null, allow?: boolean) => void,
+    ): void => {
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.length === 0) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+      return;
+    },
     credentials: true,
+    optionsSuccessStatus: 204,
   });
 
   app.useGlobalPipes(
@@ -29,6 +54,6 @@ async function bootstrap() {
   await app.listen(port);
 
   console.log(`✅ API running at http://localhost:${port}`);
-  console.log(`🌐 CORS Origin: ${configService.get<string>('CORS_ORIGIN')}`);
+  console.log(`🌐 CORS Origins: ${allowedOrigins.join(', ') || 'any'}`);
 }
 void bootstrap();
