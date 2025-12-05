@@ -48,6 +48,7 @@ export interface ProfileResponse {
   updatedAt?: Date | string;
   followers?: UserRef[];
   following?: UserRef[];
+  bookmarks?: string[];
   visibility?: {
     name?: boolean;
     bio?: boolean;
@@ -80,3 +81,5 @@ export interface PublicProfileResponse {
   createdAt?: Date | string;
   role: UserRole;
 }
+
+// Bookmarks store only item IDs now

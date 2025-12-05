@@ -56,6 +56,9 @@ export class User {
   })
   following?: Types.ObjectId[];
 
+  @Prop({ type: [String], required: false, default: [] })
+  bookmarks?: string[];
+
   @Prop({
     type: {
       name: { type: Boolean, default: true },

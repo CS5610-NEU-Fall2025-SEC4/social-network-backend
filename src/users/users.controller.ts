@@ -8,6 +8,7 @@ import {
   Patch,
   Param,
 } from '@nestjs/common';
+import type { Request as ExpressRequest } from 'express';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { LoginUserDto } from './dto/login-user.dto';
@@ -24,24 +25,24 @@ import {
   PublicProfileResponse,
 } from './types/user-response.types';
 
-interface AuthenticatedRequest extends Request {
+interface AuthenticatedRequest extends ExpressRequest {
   user: ValidatedUser;
 }
 
 @Controller('users')
 export class UsersController {
-  constructor(private readonly usersService: UsersService) { }
+  constructor(private readonly usersService: UsersService) {}
 
   @Post('register')
   async register(
     @Body() createUserDto: CreateUserDto,
   ): Promise<CreateUserResponse> {
-    return this.usersService.createUser(createUserDto);
+    return await this.usersService.createUser(createUserDto);
   }
 
   @Post('login')
   async login(@Body() loginUserDto: LoginUserDto): Promise<LoginResponse> {
-    return this.usersService.loginUser(loginUserDto);
+    return await this.usersService.loginUser(loginUserDto);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -58,7 +59,7 @@ export class UsersController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getMe(@Request() req: AuthenticatedRequest): Promise<ProfileResponse> {
-    return this.usersService.getProfile(req.user.userId);
+    return await this.usersService.getProfile(req.user.userId);
   }
 
   @UseGuards(JwtAuthGuard)
@@ -67,32 +68,68 @@ export class UsersController {
     @Request() req: AuthenticatedRequest,
     @Body() updates: UpdateUserDto,
   ): Promise<ProfileResponse> {
-    return this.usersService.updateUserProfile(req.user.userId, updates);
+    return await this.usersService.updateUserProfile(req.user.userId, updates);
   }
 
   @Get('checkHnUsername/:username')
   async checkHNUsername(
     @Param('username') username: string,
-  ): Promise<{ exists: boolean; message: string; }> {
-    return this.usersService.checkHNUsername(username);
+  ): Promise<{ exists: boolean; message: string }> {
+    return await this.usersService.checkHNUsername(username);
   }
 
   @Get('checkUsername/:username')
   async checkUsername(
     @Param('username') username: string,
-  ): Promise<{ exists: boolean; message: string; }> {
-    return this.usersService.checkUsernameExists(username);
+  ): Promise<{ exists: boolean; message: string }> {
+    return await this.usersService.checkUsernameExists(username);
   }
 
   @Get('search/:username')
   async getUserIdByUsername(
     @Param('username') username: string,
-  ): Promise<{ id: string; }> {
-    return this.usersService.getUserIdByUsername(username);
+  ): Promise<{ id: string }> {
+    return await this.usersService.getUserIdByUsername(username);
   }
 
   @Get(':id')
   async getPublicById(@Param('id') id: string): Promise<PublicProfileResponse> {
-    return this.usersService.getPublicProfile(id);
+    return await this.usersService.getPublicProfile(id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/follow')
+  async follow(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ): Promise<{ message: string }> {
+    return await this.usersService.followUser(req.user.userId, id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/unfollow')
+  async unfollow(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ): Promise<{ message: string }> {
+    return await this.usersService.unfollowUser(req.user.userId, id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/bookmarks')
+  async addBookmark(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: { itemId: string },
+  ): Promise<{ message: string; bookmarks: string[] }> {
+    return await this.usersService.addBookmark(req.user.userId, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me/bookmarks')
+  async removeBookmark(
+    @Request() req: AuthenticatedRequest,
+    @Body() body: { itemId: string },
+  ): Promise<{ message: string; bookmarks: string[] }> {
+    return await this.usersService.removeBookmark(req.user.userId, body);
   }
 }
