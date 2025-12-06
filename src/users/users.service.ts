@@ -389,6 +389,7 @@ export class UsersService {
       following,
       createdAt: user.createdAt as Date,
       role: user.role,
+      isBlocked: user.isBlocked,
     };
   }
 
@@ -452,6 +453,13 @@ export class UsersService {
     );
     await Promise.all([me.save(), target.save()]);
     return { message: 'Unfollowed successfully' };
+  }
+
+  async isFollowing(meId: string, targetUserId: string): Promise<{ following: boolean }> {
+    const me = await this.userModel.findById(meId).exec();
+    if (!me) throw new NotFoundException('User not found');
+    const following = (me.following ?? []).some((id) => String(id) === String(targetUserId));
+    return { following };
   }
 
   async addBookmark(

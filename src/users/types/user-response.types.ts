@@ -82,4 +82,5 @@ export interface PublicProfileResponse {
   following?: UserRef[];
   createdAt?: Date | string;
   role: UserRole;
+  isBlocked?: boolean;
 }
