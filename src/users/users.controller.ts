@@ -136,15 +136,6 @@ export class UsersController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get(':id/isFollowing')
-  async isFollowing(
-    @Request() req: AuthenticatedRequest,
-    @Param('id') id: string,
-  ): Promise<{ following: boolean }> {
-    return await this.usersService.isFollowing(req.user.userId, id);
-  }
-
-  @UseGuards(JwtAuthGuard)
   @Post('me/bookmarks')
   async addBookmark(
     @Request() req: AuthenticatedRequest,
