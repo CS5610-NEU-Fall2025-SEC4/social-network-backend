@@ -32,7 +32,6 @@ interface AuthenticatedRequest extends ExpressRequest {
   user: ValidatedUser;
 }
 
-// Minimal file type to avoid dependency on Multer's global typings
 type UploadedImageFile = {
   buffer: Buffer;
   mimetype: string;
