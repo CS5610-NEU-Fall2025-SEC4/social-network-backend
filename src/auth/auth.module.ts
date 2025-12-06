@@ -13,7 +13,7 @@ import { forwardRef } from '@nestjs/common';
       useFactory: (appConfigService: AppConfigService): JwtModuleOptions => ({
         secret: appConfigService.jwtSecret,
         signOptions: {
-          expiresIn: '1h',
+          expiresIn: '15m',
         },
       }),
       inject: [AppConfigService],
