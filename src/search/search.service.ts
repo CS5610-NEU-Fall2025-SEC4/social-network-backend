@@ -4,12 +4,16 @@ import { HNSearchResponse, HNStory, SearchParams } from './search.types';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Story } from '../story/story.schema';
+import { Like } from '../like/like.schema';
+import { CommentService } from '../comment/comment.service';
 
 @Injectable()
 export class SearchService {
   constructor(
     private readonly config: AppConfigService,
     @InjectModel(Story.name) private storyModel: Model<Story>,
+    @InjectModel(Like.name) private likeModel: Model<Like>,
+    private readonly commentService: CommentService,
   ) {}
 
   private buildQueryString(params: SearchParams): string {

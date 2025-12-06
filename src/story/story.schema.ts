@@ -39,6 +39,12 @@ export class Story extends Document {
   isDeleted: boolean;
 
   @Prop()
+  editedAt?: Date;
+
+  @Prop()
+  updatedAt?: Date;
+
+  @Prop()
   deletedAt?: Date;
 
   @Prop()

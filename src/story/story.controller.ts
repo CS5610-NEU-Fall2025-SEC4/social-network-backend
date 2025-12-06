@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 
 import { Request as ExpressRequest } from 'express';
-
+import { Query } from '@nestjs/common';
 import { StoryService } from './story.service';
 import { CreateStoryDto } from './dto/create-story.dto';
 import { UpdateStoryDto } from './dto/update-story.dto';
@@ -48,6 +48,15 @@ export class StoryController {
   @Get('type/:type')
   findStoriesByType(@Param('type') type: StoryType) {
     return this.storyService.findByType(type);
+  }
+
+  @Get('author/:username')
+  findStoriesByAuthor(
+    @Param('username') username: string,
+    @Query('limit') limit?: string,
+  ) {
+    const limitNum = limit ? parseInt(limit, 10) : 10;
+    return this.storyService.findByAuthor(username, limitNum);
   }
 
   @Get(':storyId/full')

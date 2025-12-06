@@ -19,6 +19,7 @@ export interface HNStory {
   _tags: string[];
   canEdit?: boolean;
   canDelete?: boolean;
+  editedAt?: string | undefined;
 }
 
 export interface HNStoryItem {
@@ -38,6 +39,7 @@ export interface HNStoryItem {
   type: StoryType;
   url: string | null;
   _tags: string[];
+  editedAt?: string | undefined;
 }
 
 export interface HNSearchResponse {

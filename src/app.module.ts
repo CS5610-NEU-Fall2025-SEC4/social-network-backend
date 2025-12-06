@@ -12,6 +12,7 @@ import { StoryModule } from './story/story.module';
 import { CommentModule } from './comment/comment.module';
 import { AdminModule } from './admin/admin.module';
 import { ReportModule } from './report/report.module';
+import { LikeModule } from './like/like.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { ReportModule } from './report/report.module';
     CommentModule,
     AdminModule,
     ReportModule,
+    LikeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

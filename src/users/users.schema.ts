@@ -31,6 +31,9 @@ export class User {
   @Prop({ type: [String], required: false, default: [] })
   interests?: string[];
 
+  @Prop({ type: [String], required: false, default: [] })
+  likes?: string[];
+
   @Prop({
     type: {
       twitter: { type: String, required: false },

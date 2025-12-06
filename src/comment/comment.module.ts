@@ -4,9 +4,11 @@ import { Comment, CommentSchema } from './comment.schema';
 import { CommentController } from './comment.controller';
 import { CommentService } from './comment.service';
 import { Story, StorySchema } from 'src/story/story.schema';
+import { AppConfigModule } from '../config/app-config.module';
 
 @Module({
   imports: [
+    AppConfigModule,
     MongooseModule.forFeature([
       { name: Comment.name, schema: CommentSchema },
       { name: Story.name, schema: StorySchema },
@@ -14,5 +16,6 @@ import { Story, StorySchema } from 'src/story/story.schema';
   ],
   controllers: [CommentController],
   providers: [CommentService],
+  exports: [CommentService],
 })
 export class CommentModule {}
