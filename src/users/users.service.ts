@@ -23,6 +23,8 @@ import {
 } from './types/user-response.types';
 import { User, UserDocument } from './users.schema';
 import { BlockedEmail, BlockedEmailDocument } from './blocked-email.schema';
+import { Story } from '../story/story.schema';
+import { Comment } from '../comment/comment.schema';
 
 @Injectable()
 export class UsersService {
@@ -31,6 +33,10 @@ export class UsersService {
     private readonly userModel: Model<UserDocument>,
     @InjectModel(BlockedEmail.name)
     private readonly blockedEmailModel: Model<BlockedEmailDocument>,
+    @InjectModel(Story.name)
+    private readonly storyModel: Model<Story>,
+    @InjectModel(Comment.name)
+    private readonly commentModel: Model<Comment>,
     private readonly jwtService: JwtService,
     private readonly appConfigService: AppConfigService,
   ) {}
@@ -206,6 +212,16 @@ export class UsersService {
       id: String(u._id),
       username: u.username,
     }));
+
+    const postCount = await this.storyModel.countDocuments({
+      author: user.username,
+      isDeleted: { $ne: true },
+    });
+    const commentCount = await this.commentModel.countDocuments({
+      author: user.username,
+      isDeleted: { $ne: true },
+    });
+
     return {
       id: String(user._id),
       username: user.username,
@@ -221,6 +237,10 @@ export class UsersService {
       followers,
       following,
       bookmarks: user.bookmarks ?? [],
+      stats: {
+        posts: postCount,
+        comments: commentCount,
+      },
       createdAt: user.createdAt as Date,
       updatedAt: user.updatedAt as Date,
       visibility: user.visibility ?? {},
@@ -368,6 +388,16 @@ export class UsersService {
       id: String(u._id),
       username: u.username,
     }));
+
+    const postCount = await this.storyModel.countDocuments({
+      author: user.username,
+      isDeleted: { $ne: true },
+    });
+    const commentCount = await this.commentModel.countDocuments({
+      author: user.username,
+      isDeleted: { $ne: true },
+    });
+
     return {
       id: String(user._id),
       username: user.username,
@@ -388,6 +418,10 @@ export class UsersService {
       followers,
       following,
       createdAt: user.createdAt as Date,
+      stats: {
+        posts: postCount,
+        comments: commentCount,
+      },
       role: user.role,
       isBlocked: user.isBlocked,
     };

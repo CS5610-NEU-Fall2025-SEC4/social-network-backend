@@ -50,6 +50,10 @@ export interface ProfileResponse {
   followers?: UserRef[];
   following?: UserRef[];
   bookmarks?: string[];
+  stats?: {
+    posts: number;
+    comments: number;
+  };
   visibility?: {
     name?: boolean;
     bio?: boolean;
@@ -81,6 +85,10 @@ export interface PublicProfileResponse {
   followers?: UserRef[];
   following?: UserRef[];
   createdAt?: Date | string;
+  stats?: {
+    posts: number;
+    comments: number;
+  };
   role: UserRole;
   isBlocked?: boolean;
 }
