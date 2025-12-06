@@ -455,6 +455,18 @@ export class UsersService {
     return { message: 'Unfollowed successfully' };
   }
 
+  async isFollowing(
+    meId: string,
+    targetUserId: string,
+  ): Promise<{ following: boolean }> {
+    const me = await this.userModel.findById(meId).exec();
+    if (!me) throw new NotFoundException('User not found');
+    const isFollowingTarget = (me.following ?? []).some(
+      (id) => String(id) === String(targetUserId),
+    );
+    return { following: isFollowingTarget };
+  }
+
   async addBookmark(
     userId: string,
     bookmark: { itemId: string },

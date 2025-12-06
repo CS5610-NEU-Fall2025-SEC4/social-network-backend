@@ -152,4 +152,13 @@ export class UsersController {
   ): Promise<{ message: string; bookmarks: string[] }> {
     return await this.usersService.removeBookmark(req.user.userId, body);
   }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/isFollowing')
+  async getIsFollowing(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ): Promise<{ following: boolean }> {
+    return await this.usersService.isFollowing(req.user.userId, id);
+  }
 }
