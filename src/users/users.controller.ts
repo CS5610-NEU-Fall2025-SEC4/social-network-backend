@@ -7,7 +7,10 @@ import {
   Request,
   Patch,
   Param,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request as ExpressRequest } from 'express';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -28,6 +31,12 @@ import {
 interface AuthenticatedRequest extends ExpressRequest {
   user: ValidatedUser;
 }
+
+type UploadedImageFile = {
+  buffer: Buffer;
+  mimetype: string;
+  originalname: string;
+};
 
 @Controller('users')
 export class UsersController {
@@ -69,6 +78,16 @@ export class UsersController {
     @Body() updates: UpdateUserDto,
   ): Promise<ProfileResponse> {
     return await this.usersService.updateUserProfile(req.user.userId, updates);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('me/photo')
+  @UseInterceptors(FileInterceptor('file'))
+  async uploadPhoto(
+    @Request() req: AuthenticatedRequest,
+    @UploadedFile() file: UploadedImageFile,
+  ): Promise<{ avatarUrl: string }> {
+    return await this.usersService.updateUserPhoto(req.user.userId, file);
   }
 
   @Get('checkHnUsername/:username')
@@ -131,5 +150,14 @@ export class UsersController {
     @Body() body: { itemId: string },
   ): Promise<{ message: string; bookmarks: string[] }> {
     return await this.usersService.removeBookmark(req.user.userId, body);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get(':id/isFollowing')
+  async getIsFollowing(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ): Promise<{ following: boolean }> {
+    return await this.usersService.isFollowing(req.user.userId, id);
   }
 }

@@ -39,9 +39,10 @@ export class UsersService {
     try {
       const user = await this.userModel.findOne({ username }).exec();
       return user !== null;
-    } catch (error) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       throw new BadRequestException(
-        'Error checking username availability: ' + error.message,
+        'Error checking username availability: ' + msg,
       );
     }
   }
@@ -58,7 +59,7 @@ export class UsersService {
         throw new BadRequestException('Failed to check HackerNews username');
       }
 
-      const data = await response.json();
+      const data: unknown = await response.json();
 
       if (data === null) {
         return {
@@ -71,9 +72,10 @@ export class UsersService {
         exists: true,
         message: 'Username already exists',
       };
-    } catch (error) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
       throw new BadRequestException(
-        'Failed to check HackerNews username : ' + error.message,
+        'Failed to check HackerNews username : ' + msg,
       );
     }
   }
@@ -210,6 +212,7 @@ export class UsersService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      avatarUrl: user.avatarUrl ?? undefined,
       bio: user.bio ?? null,
       location: user.location ?? null,
       website: user.website ?? null,
@@ -326,6 +329,7 @@ export class UsersService {
       email: user.email,
       firstName: user.firstName,
       lastName: user.lastName,
+      avatarUrl: user.avatarUrl ?? undefined,
       bio: user.bio ?? null,
       location: user.location ?? null,
       website: user.website ?? null,
@@ -369,6 +373,7 @@ export class UsersService {
       username: user.username,
       firstName: user.firstName,
       lastName: user.lastName,
+      avatarUrl: user.avatarUrl ?? undefined,
       bio: user.visibility?.bio === false ? null : (user.bio ?? null),
       location:
         user.visibility?.location === false ? null : (user.location ?? null),
@@ -384,7 +389,28 @@ export class UsersService {
       following,
       createdAt: user.createdAt as Date,
       role: user.role,
+      isBlocked: user.isBlocked,
     };
+  }
+
+  async updateUserPhoto(
+    userId: string,
+    file: { buffer: Buffer; mimetype: string; originalname: string },
+  ): Promise<{ avatarUrl: string }> {
+    const mime: string | undefined = file?.mimetype;
+    const buf: Buffer | undefined = file?.buffer;
+    if (!mime || !buf) {
+      return { avatarUrl: '' };
+    }
+    if (!mime.startsWith('image/')) {
+      return { avatarUrl: '' };
+    }
+    const base64 = buf.toString('base64');
+    const dataUrl = `data:${mime};base64,${base64}`;
+    await this.userModel
+      .updateOne({ _id: userId }, { avatarUrl: dataUrl })
+      .exec();
+    return { avatarUrl: dataUrl };
   }
 
   async followUser(
@@ -427,6 +453,18 @@ export class UsersService {
     );
     await Promise.all([me.save(), target.save()]);
     return { message: 'Unfollowed successfully' };
+  }
+
+  async isFollowing(
+    meId: string,
+    targetUserId: string,
+  ): Promise<{ following: boolean }> {
+    const me = await this.userModel.findById(meId).exec();
+    if (!me) throw new NotFoundException('User not found');
+    const isFollowingTarget = (me.following ?? []).some(
+      (id) => String(id) === String(targetUserId),
+    );
+    return { following: isFollowingTarget };
   }
 
   async addBookmark(

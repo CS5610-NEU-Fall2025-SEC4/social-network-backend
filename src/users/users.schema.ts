@@ -97,6 +97,9 @@ export class User {
   @Prop({ type: String, required: false })
   blockedBy?: string;
 
+  @Prop({ type: String, required: false })
+  avatarUrl?: string;
+
   createdAt?: Date;
   updatedAt?: Date;
 }

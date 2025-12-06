@@ -39,6 +39,7 @@ export interface ProfileResponse {
   email: string;
   firstName: string;
   lastName: string;
+  avatarUrl?: string;
   bio?: string | null;
   location?: string | null;
   website?: string | null;
@@ -71,6 +72,7 @@ export interface PublicProfileResponse {
   username: string;
   firstName: string;
   lastName: string;
+  avatarUrl?: string;
   bio?: string | null;
   location?: string | null;
   website?: string | null;
@@ -80,4 +82,5 @@ export interface PublicProfileResponse {
   following?: UserRef[];
   createdAt?: Date | string;
   role: UserRole;
+  isBlocked?: boolean;
 }
