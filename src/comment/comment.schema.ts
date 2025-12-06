@@ -44,6 +44,12 @@ export class Comment extends Document {
   deletedDueToBlock?: boolean;
 
   createdAt: Date;
+
+  @Prop()
+  editedAt?: Date;
+
+  @Prop()
+  updatedAt?: Date;
 }
 
 export const CommentSchema = SchemaFactory.createForClass(Comment);

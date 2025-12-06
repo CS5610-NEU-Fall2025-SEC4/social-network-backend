@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
@@ -13,13 +14,44 @@ import { Story } from 'src/story/story.schema';
 import { HNStory, HNStoryItem } from 'src/search/search.types';
 import { ValidatedUser } from 'src/users/types/user-response.types';
 import { UserRole } from 'src/users/types/user-roles.enum';
+import { AppConfigService } from '../config/app-config.service';
 
 @Injectable()
 export class CommentService {
   constructor(
     @InjectModel(Comment.name) private commentModel: Model<Comment>,
     @InjectModel(Story.name) private storyModel: Model<Story>,
+    private readonly config: AppConfigService,
   ) {}
+
+  private countAllComments(comments: HNStoryItem[]): number {
+    let count = 0;
+
+    const traverse = (comment: HNStoryItem) => {
+      count++;
+      if (comment.children && Array.isArray(comment.children)) {
+        comment.children.forEach((child) => {
+          if (typeof child === 'object' && child !== null) {
+            traverse(child);
+          }
+        });
+      }
+    };
+
+    comments.forEach(traverse);
+    return count;
+  }
+  private async fetchAlgoliaAPI<T>(endpoint: string): Promise<T> {
+    const base = this.config.algoliaBaseUrl;
+    const url = `${base}${endpoint}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new BadRequestException(
+        `Algolia API Error: ${res.status} ${res.statusText}`,
+      );
+    }
+    return (await res.json()) as T;
+  }
 
   private _toHNStory(comment: Comment): HNStory {
     return {
@@ -38,6 +70,9 @@ export class CommentService {
       type: 'comment',
       url: null,
       _tags: [],
+      editedAt: comment.editedAt
+        ? new Date(comment.editedAt).toISOString()
+        : undefined,
     };
   }
 
@@ -88,13 +123,17 @@ export class CommentService {
     const story = await this.storyModel.findOne({ story_id }).exec();
 
     if (parent_id) {
-      const parentComment = await this.commentModel
-        .findOne({ comment_id: parent_id })
-        .exec();
-      if (!parentComment) {
-        throw new NotFoundException(
-          `Parent comment with ID "${parent_id}" not found`,
-        );
+      const isInternalParent = isNaN(Number(parent_id));
+
+      if (isInternalParent) {
+        const parentComment = await this.commentModel
+          .findOne({ comment_id: parent_id })
+          .exec();
+        if (!parentComment) {
+          throw new NotFoundException(
+            `Parent comment with ID "${parent_id}" not found`,
+          );
+        }
       }
     }
 
@@ -106,11 +145,16 @@ export class CommentService {
 
     try {
       const savedComment = await createdComment.save();
+
       if (savedComment.parent_id) {
-        await this.commentModel.updateOne(
-          { comment_id: savedComment.parent_id },
-          { $push: { children: savedComment.comment_id } },
-        );
+        const isInternalParent = isNaN(Number(savedComment.parent_id));
+
+        if (isInternalParent) {
+          await this.commentModel.updateOne(
+            { comment_id: savedComment.parent_id },
+            { $push: { children: savedComment.comment_id } },
+          );
+        }
       } else if (story) {
         await this.storyModel.updateOne(
           { story_id: savedComment.story_id },
@@ -140,22 +184,158 @@ export class CommentService {
     return this._toHNStory(comment);
   }
 
-  async findByStoryId(storyId: string): Promise<HNStoryItem[]> {
-    const topLevelComments = await this.commentModel
+  private buildMongoCommentTree(
+    comment: Comment,
+    mongoByParentId: Map<string | null, Comment[]>,
+  ): HNStoryItem {
+    const baseComment = this._toHNStory(comment);
+
+    const mongoChildren = mongoByParentId.get(String(comment.comment_id)) || [];
+
+    const childTrees = mongoChildren.map((child) =>
+      this.buildMongoCommentTree(child, mongoByParentId),
+    );
+
+    return {
+      ...baseComment,
+      children: childTrees,
+    } as HNStoryItem;
+  }
+
+  private injectMongoIntoAlgoliaTree(
+    algoliaComments: HNStoryItem[],
+    mongoComments: Comment[],
+  ): HNStoryItem[] {
+    const mongoByParentId = new Map<string | null, Comment[]>();
+
+    mongoComments.forEach((comment) => {
+      const parentId = comment.parent_id ? String(comment.parent_id) : null;
+      if (!mongoByParentId.has(parentId)) {
+        mongoByParentId.set(parentId, []);
+      }
+      mongoByParentId.get(parentId)!.push(comment);
+    });
+
+    const processAlgoliaComment = (
+      algoliaComment: HNStoryItem,
+      depth: number = 0,
+    ): HNStoryItem => {
+      const algoliaIdString = String(algoliaComment.id);
+
+      const mongoReplies = mongoByParentId.get(algoliaIdString) || [];
+
+      const mongoTrees = mongoReplies.map((mongoComment) =>
+        this.buildMongoCommentTree(mongoComment, mongoByParentId),
+      );
+
+      let processedChildren: HNStoryItem[] = [];
+      if (Array.isArray(algoliaComment.children)) {
+        processedChildren = algoliaComment.children
+          .filter(
+            (child): child is HNStoryItem =>
+              typeof child === 'object' && child !== null,
+          )
+          .map((child) => processAlgoliaComment(child, depth + 1));
+      }
+
+      return {
+        ...algoliaComment,
+        children: [...processedChildren, ...mongoTrees],
+      };
+    };
+
+    const enhancedAlgoliaComments = algoliaComments.map((comment) => {
+      return processAlgoliaComment(comment);
+    });
+
+    const topLevelMongoComments = mongoByParentId.get(null) || [];
+
+    const topLevelMongoTrees = topLevelMongoComments.map((mongoComment) => {
+      return this.buildMongoCommentTree(mongoComment, mongoByParentId);
+    });
+
+    const result = [...enhancedAlgoliaComments, ...topLevelMongoTrees];
+
+    return result;
+  }
+
+  async findByStoryId(storyId: string): Promise<{
+    comments: HNStoryItem[];
+    commentCount: number;
+  }> {
+    const isExternal = !isNaN(Number(storyId));
+
+    if (!isExternal) {
+      const topLevelComments = await this.commentModel
+        .find({
+          story_id: storyId,
+          parent_id: null,
+          isDeleted: { $ne: true },
+        })
+        .exec();
+
+      const commentsWithChildren = await Promise.all(
+        topLevelComments.map((comment) =>
+          this._buildCommentWithChildren(comment),
+        ),
+      );
+      const internalCount = this.countAllComments(commentsWithChildren);
+
+      return {
+        comments: commentsWithChildren,
+        commentCount: internalCount,
+      };
+    }
+
+    let algoliaComments: HNStoryItem[] = [];
+
+    try {
+      const algoliaStory = await this.fetchAlgoliaAPI<any>(`/items/${storyId}`);
+
+      if (Array.isArray(algoliaStory.children)) {
+        algoliaComments = algoliaStory.children.filter(
+          (child: any): child is HNStoryItem =>
+            typeof child === 'object' && child !== null,
+        );
+      }
+    } catch (error) {
+      console.error(' [CommentService] Algolia fetch failed:', error);
+    }
+
+    const mongoComments = await this.commentModel
       .find({
         story_id: storyId,
-        parent_id: null,
         isDeleted: { $ne: true },
       })
       .exec();
 
-    const commentsWithChildren = await Promise.all(
-      topLevelComments.map((comment) =>
-        this._buildCommentWithChildren(comment),
-      ),
+    if (algoliaComments.length === 0) {
+      const topLevelMongoComments = mongoComments.filter((c) => !c.parent_id);
+
+      const builtComments = await Promise.all(
+        topLevelMongoComments.map((comment) =>
+          this._buildCommentWithChildren(comment),
+        ),
+      );
+
+      const internalCount = this.countAllComments(builtComments);
+
+      return {
+        comments: builtComments,
+        commentCount: internalCount,
+      };
+    }
+
+    const result = this.injectMongoIntoAlgoliaTree(
+      algoliaComments,
+      mongoComments,
     );
 
-    return commentsWithChildren;
+    const totalCount = this.countAllComments(result);
+    return {
+      comments: result,
+      commentCount: totalCount,
+    };
   }
 
   async update(
@@ -175,8 +355,13 @@ export class CommentService {
       throw new ForbiddenException('You can only update your own comments');
     }
 
+    const updateData = {
+      ...updateCommentDto,
+      editedAt: new Date(),
+    };
+
     const existingComment = await this.commentModel
-      .findOneAndUpdate({ comment_id: commentId }, updateCommentDto, {
+      .findOneAndUpdate({ comment_id: commentId }, updateData, {
         new: true,
       })
       .exec();

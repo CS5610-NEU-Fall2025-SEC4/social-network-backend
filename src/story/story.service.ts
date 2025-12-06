@@ -49,6 +49,9 @@ export class StoryService {
       type: story.type,
       url: story.url,
       _tags: tags,
+      editedAt: story.editedAt
+        ? new Date(story.editedAt).toISOString()
+        : undefined,
     };
   }
 
@@ -194,7 +197,7 @@ export class StoryService {
     const story = await this.storyModel
       .findOne({
         _id: mongoId,
-        isDeleted: { $ne: true }, // ✨ ADD THIS
+        isDeleted: { $ne: true },
       })
       .exec();
     if (!story) {
@@ -218,9 +221,36 @@ export class StoryService {
     return this._toHNStory(story);
   }
 
-  async findOneWithChildren(storyId: string): Promise<HNStoryItem> {
+  private countAllComments(comments: HNStoryItem[]): number {
+    let count = 0;
+
+    const traverse = (comment: HNStoryItem) => {
+      count++;
+      if (comment.children && Array.isArray(comment.children)) {
+        comment.children.forEach((child) => {
+          if (typeof child === 'object' && child !== null) {
+            traverse(child);
+          }
+        });
+      }
+    };
+
+    comments.forEach(traverse);
+    return count;
+  }
+
+  async findOneWithChildren(
+    storyId: string,
+  ): Promise<HNStoryItem & { commentCount?: number }> {
     const story = await this.findOne(storyId);
-    return this._buildStoryWithChildren(story);
+    const storyWithChildren = await this._buildStoryWithChildren(story);
+
+    const commentCount = this.countAllComments(storyWithChildren.children);
+
+    return {
+      ...storyWithChildren,
+      commentCount: commentCount,
+    };
   }
 
   async findByType(type: StoryType): Promise<HNStory[]> {
@@ -244,8 +274,13 @@ export class StoryService {
       throw new ForbiddenException('You can only update your own stories');
     }
 
+    const updateData = {
+      ...updateStoryDto,
+      editedAt: new Date(),
+    };
+
     const existingStory = await this.storyModel
-      .findOneAndUpdate({ story_id: storyId }, updateStoryDto, { new: true })
+      .findOneAndUpdate({ story_id: storyId }, updateData, { new: true })
       .exec();
 
     if (!existingStory) {
@@ -306,5 +341,17 @@ export class StoryService {
     }
 
     throw new ForbiddenException('Insufficient permissions');
+  }
+  async findByAuthor(username: string, limit: number = 10): Promise<HNStory[]> {
+    const stories = await this.storyModel
+      .find({
+        author: username,
+        isDeleted: { $ne: true },
+      })
+      .sort({ created_at_i: -1 })
+      .limit(limit)
+      .exec();
+
+    return stories.map((story) => this._toHNStory(story));
   }
 }
