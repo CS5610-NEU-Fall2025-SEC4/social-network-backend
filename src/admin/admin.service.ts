@@ -62,7 +62,7 @@ export class AdminService {
     await user.save();
 
     await this.storyModel.updateMany(
-      { author: user.username, isDeleted: false },
+      { author: user.username, isDeleted: { $ne: true } },
       {
         $set: {
           isDeleted: true,
@@ -75,7 +75,7 @@ export class AdminService {
     );
 
     await this.commentModel.updateMany(
-      { author: user.username, isDeleted: false },
+      { author: user.username, isDeleted: { $ne: true } },
       {
         $set: {
           isDeleted: true,
