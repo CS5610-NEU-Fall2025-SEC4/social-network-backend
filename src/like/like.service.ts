@@ -17,12 +17,11 @@ export class LikeService {
 
   async toggleLike(
     itemId: string,
-    itemType: 'story' | 'comment',
     username: string,
-    originalPoints: number = 0,
   ): Promise<{ liked: boolean; totalPoints: number }> {
     const existingLike = await this.likeModel
       .findOne({ item_id: itemId, username })
+      .lean()
       .exec();
 
     if (existingLike) {
@@ -32,32 +31,17 @@ export class LikeService {
         { username },
         { $pull: { likes: itemId } },
       );
-
       const isInternal = isNaN(Number(itemId));
       if (isInternal) {
-        if (itemType === 'story') {
-          await this.storyModel.updateOne(
-            { story_id: itemId },
-            { $inc: { points: -1 } },
-          );
-        } else {
-          await this.commentModel.updateOne(
-            { comment_id: itemId },
-            { $inc: { points: -1 } },
-          );
-        }
+        await this.updateItemPoints(itemId, -1);
       }
 
-      const totalPoints = await this.getTotalPoints(
-        itemId,
-        itemType,
-        originalPoints,
-      );
+      const totalPoints = await this.getTotalPoints(itemId);
       return { liked: false, totalPoints };
     } else {
       const newLike = new this.likeModel({
         item_id: itemId,
-        item_type: itemType,
+        item_type: 'item',
         username,
       });
 
@@ -70,25 +54,26 @@ export class LikeService {
 
       const isInternal = isNaN(Number(itemId));
       if (isInternal) {
-        if (itemType === 'story') {
-          await this.storyModel.updateOne(
-            { story_id: itemId },
-            { $inc: { points: 1 } },
-          );
-        } else {
-          await this.commentModel.updateOne(
-            { comment_id: itemId },
-            { $inc: { points: 1 } },
-          );
-        }
+        await this.updateItemPoints(itemId, 1);
       }
 
-      const totalPoints = await this.getTotalPoints(
-        itemId,
-        itemType,
-        originalPoints,
-      );
+      const totalPoints = await this.getTotalPoints(itemId);
       return { liked: true, totalPoints };
+    }
+  }
+
+  private async updateItemPoints(
+    itemId: string,
+    increment: number,
+  ): Promise<void> {
+    const commentResult = await this.commentModel
+      .updateOne({ comment_id: itemId }, { $inc: { points: increment } })
+      .exec();
+
+    if (commentResult.matchedCount === 0) {
+      await this.storyModel
+        .updateOne({ story_id: itemId }, { $inc: { points: increment } })
+        .exec();
     }
   }
 
@@ -96,6 +81,7 @@ export class LikeService {
     const user = await this.userModel
       .findOne({ username, likes: itemId })
       .select('_id')
+      .lean()
       .exec();
     return !!user;
   }
@@ -104,31 +90,15 @@ export class LikeService {
     return this.likeModel.countDocuments({ item_id: itemId }).exec();
   }
 
-  async getTotalPoints(
-    itemId: string,
-    itemType: 'story' | 'comment',
-    originalPoints: number = 0,
-  ): Promise<number> {
-    const isInternal = isNaN(Number(itemId));
-
-    if (isInternal) {
-      if (itemType === 'story') {
-        const story = await this.storyModel.findOne({ story_id: itemId });
-        return story?.points || 0;
-      } else {
-        const comment = await this.commentModel.findOne({ comment_id: itemId });
-        return comment?.points || 0;
-      }
-    } else {
-      const ourLikes = await this.getLikeCount(itemId);
-      return originalPoints + ourLikes;
-    }
+  async getTotalPoints(itemId: string): Promise<number> {
+    return this.getLikeCount(itemId);
   }
 
   async getUserLikes(username: string): Promise<string[]> {
     const user = await this.userModel
       .findOne({ username })
       .select('likes')
+      .lean()
       .exec();
     return user?.likes || [];
   }

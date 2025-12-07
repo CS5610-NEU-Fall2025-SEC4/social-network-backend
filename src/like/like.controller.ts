@@ -24,33 +24,18 @@ export class LikeController {
   @Post(':itemId/toggle')
   async toggleLike(
     @Param('itemId') itemId: string,
-    @Query('type') itemType: 'story' | 'comment',
-    @Query('originalPoints') originalPoints: string,
     @Request() req: AuthRequest,
   ) {
-    const originalPointsNum = originalPoints ? parseInt(originalPoints, 10) : 0;
-    return this.likeService.toggleLike(
-      itemId,
-      itemType,
-      req.user.username,
-      originalPointsNum,
-    );
+    return this.likeService.toggleLike(itemId, req.user.username);
   }
 
   @Get(':itemId/status')
   async getLikeStatus(
     @Param('itemId') itemId: string,
-    @Query('type') itemType: 'story' | 'comment',
-    @Query('originalPoints') originalPoints: string,
     @Query('username') username?: string,
   ) {
-    const originalPointsNum = originalPoints ? parseInt(originalPoints, 10) : 0;
     const likeCount = await this.likeService.getLikeCount(itemId);
-    const totalPoints = await this.likeService.getTotalPoints(
-      itemId,
-      itemType,
-      originalPointsNum,
-    );
+    const totalPoints = await this.likeService.getTotalPoints(itemId);
     const isLiked = username
       ? await this.likeService.isLikedByUser(itemId, username)
       : false;
