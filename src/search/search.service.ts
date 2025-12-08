@@ -200,7 +200,14 @@ export class SearchService {
   }
 
   async getItem(id: number): Promise<HNStory> {
-    return this.fetchAlgoliaAPI(`/items/${id}`);
+    const algoliaStory = await this.fetchAlgoliaAPI<HNStory>(`/items/${id}`);
+
+    const { comments } = await this.commentService.findByStoryId(String(id));
+
+    return {
+      ...algoliaStory,
+      children: comments,
+    };
   }
 
   async getFrontPage(storyType?: string): Promise<HNSearchResponse> {
